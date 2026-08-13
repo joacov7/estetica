@@ -27,6 +27,7 @@ import {
   primaryKey,
   unique,
   index,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 // --- enums ------------------------------------------------------------------
@@ -241,9 +242,18 @@ export const clients = pgTable(
       () => professionals.id,
       { onDelete: "set null" },
     ),
+    // Referral program: each client has a shareable code; referredById points
+    // to the client who referred them (self-reference).
+    referralCode: text("referral_code"),
+    referredById: uuid("referred_by_id").references((): AnyPgColumn => clients.id, {
+      onDelete: "set null",
+    }),
     createdAt: ts(),
   },
-  (t) => [unique("clients_org_phone_unique").on(t.organizationId, t.phone)],
+  (t) => [
+    unique("clients_org_phone_unique").on(t.organizationId, t.phone),
+    index("clients_org_refcode_idx").on(t.organizationId, t.referralCode),
+  ],
 );
 
 export const clientNotes = pgTable("client_notes", {

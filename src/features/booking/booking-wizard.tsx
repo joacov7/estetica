@@ -43,11 +43,13 @@ export function BookingWizard({
   services,
   professionals,
   profServices,
+  initialRef = "",
 }: {
   org: Org;
   services: Service[];
   professionals: Professional[];
   profServices: ProfService[];
+  initialRef?: string;
 }) {
   const [step, setStep] = useState(0);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
@@ -59,6 +61,7 @@ export function BookingWizard({
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [referralCode, setReferralCode] = useState(initialRef);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Extract<BookingResult, { ok: true }> | null>(null);
@@ -121,7 +124,7 @@ export function BookingWizard({
       professionalId: slot.professionalId,
       serviceIds,
       startIso: slot.startIso,
-      client: { name, phone, email },
+      client: { name, phone, email, referralCode },
     });
     setSubmitting(false);
     if (res.ok) setResult(res);
@@ -265,6 +268,7 @@ export function BookingWizard({
             <div className="space-y-1.5"><Label htmlFor="name">Nombre</Label><Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Tu nombre" /></div>
             <div className="space-y-1.5"><Label htmlFor="phone">WhatsApp</Label><Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+54 9 11 ..." inputMode="tel" /></div>
             <div className="space-y-1.5"><Label htmlFor="email">Email (opcional)</Label><Input id="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" type="email" /></div>
+            <div className="space-y-1.5"><Label htmlFor="ref">¿Quién te recomendó? (opcional)</Label><Input id="ref" value={referralCode} onChange={(e) => setReferralCode(e.target.value.toUpperCase())} placeholder="Código de referido" /></div>
           </div>
           <Button className="mt-6 w-full" disabled={name.trim().length < 2 || phone.trim().length < 6} onClick={() => setStep(5)}>Continuar</Button>
           <BackButton onClick={() => setStep(3)} />

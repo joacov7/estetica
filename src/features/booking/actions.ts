@@ -15,6 +15,7 @@ import { getAvailableSlots } from "@/services/availability";
 import { bookingSchema, type BookingInput } from "@/lib/validations/booking";
 import { createBookingToken } from "@/lib/booking-token";
 import { bookingLimiter } from "@/lib/rate-limit";
+import { generateReferralCode } from "@/lib/referral";
 
 export type BookingResult =
   | { ok: true; bookingCode: string; manageToken: string }
@@ -94,6 +95,18 @@ export async function createPublicBooking(input: BookingInput): Promise<BookingR
   const startAt = new Date(data.startIso).toISOString();
   const endAt = new Date(new Date(data.startIso).getTime() + slotLength * 60000).toISOString();
 
+  // --- resolve referrer (only applies to brand-new clients) ----------------
+  let referredById: string | null = null;
+  const refCode = data.client.referralCode?.trim().toUpperCase();
+  if (refCode) {
+    const [ref] = await db
+      .select({ id: clients.id })
+      .from(clients)
+      .where(and(eq(clients.organizationId, data.organizationId), eq(clients.referralCode, refCode)))
+      .limit(1);
+    if (ref) referredById = ref.id;
+  }
+
   // --- create booking atomically, retrying only on code collision ----------
   for (let attempt = 0; attempt < 4; attempt++) {
     const bookingCode = generateCode();
@@ -106,8 +119,11 @@ export async function createPublicBooking(input: BookingInput): Promise<BookingR
             name: data.client.name,
             phone: data.client.phone,
             email: data.client.email || null,
+            referralCode: generateReferralCode(),
+            referredById,
           })
           .onConflictDoUpdate({
+            // Existing clients keep their code and referrer.
             target: [clients.organizationId, clients.phone],
             set: { name: data.client.name, email: data.client.email || null },
           })

@@ -10,10 +10,13 @@ export const dynamic = "force-dynamic";
 
 export default async function ReservarPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ ref?: string }>;
 }) {
   const { slug } = await params;
+  const { ref } = await searchParams;
 
   const [org] = await db
     .select({
@@ -58,7 +61,7 @@ export default async function ReservarPage({
       >
         <ChevronLeft className="size-4" /> {org.name}
       </Link>
-      <BookingWizard org={org} services={svc} professionals={pros} profServices={profSvc} />
+      <BookingWizard org={org} services={svc} professionals={pros} profServices={profSvc} initialRef={ref ?? ""} />
     </main>
   );
 }

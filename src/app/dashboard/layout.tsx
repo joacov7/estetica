@@ -14,6 +14,7 @@ import {
   LogOut,
   BarChart3,
   Bell,
+  Gift,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
@@ -24,6 +25,7 @@ const NAV = [
   { href: "/dashboard/analytics", label: "Estadísticas", icon: BarChart3 },
   { href: "/dashboard/clientes", label: "Clientes", icon: Users },
   { href: "/dashboard/recordatorios", label: "Recordatorios", icon: Bell },
+  { href: "/dashboard/referidos", label: "Referidos", icon: Gift },
   { href: "/dashboard/servicios", label: "Servicios", icon: Scissors },
   { href: "/dashboard/profesionales", label: "Profesionales", icon: UserCog },
   { href: "/dashboard/caja", label: "Caja", icon: Wallet },

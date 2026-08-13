@@ -16,6 +16,7 @@ export const bookingSchema = z.object({
       .max(20)
       .regex(/^[0-9+\-\s()]+$/, "Teléfono inválido"),
     email: z.string().trim().email("Email inválido").optional().or(z.literal("")),
+    referralCode: z.string().trim().max(12).optional().or(z.literal("")),
   }),
 });
 

@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { waitlist, clients } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
 import { waitlistFormSchema, type WaitlistFormInput } from "@/lib/validations/waitlist";
+import { generateReferralCode } from "@/lib/referral";
 
 export async function addWaitlistEntry(input: WaitlistFormInput) {
   const parsed = waitlistFormSchema.safeParse(input);
@@ -19,7 +20,7 @@ export async function addWaitlistEntry(input: WaitlistFormInput) {
   // Link (or create) the client by phone so we can show a name.
   const [client] = await db
     .insert(clients)
-    .values({ organizationId: org.id, name: v.name, phone: v.phone })
+    .values({ organizationId: org.id, name: v.name, phone: v.phone, referralCode: generateReferralCode() })
     .onConflictDoUpdate({ target: [clients.organizationId, clients.phone], set: { name: v.name } })
     .returning({ id: clients.id });
 

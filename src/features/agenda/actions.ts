@@ -8,6 +8,7 @@ import { appointments, appointmentServices, clients, services } from "@/db/schem
 import { getCurrentOrg } from "@/features/org/current";
 import { getAvailableSlots } from "@/services/availability";
 import { manualBookingSchema, type ManualBookingInput } from "@/lib/validations/booking";
+import { generateReferralCode } from "@/lib/referral";
 import type { AppointmentStatus } from "@/db/schema";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -101,7 +102,7 @@ export async function createManualAppointment(
       await db.transaction(async (tx) => {
         const [client] = await tx
           .insert(clients)
-          .values({ organizationId: org.id, name: data.clientName, phone: data.clientPhone })
+          .values({ organizationId: org.id, name: data.clientName, phone: data.clientPhone, referralCode: generateReferralCode() })
           .onConflictDoUpdate({
             target: [clients.organizationId, clients.phone],
             set: { name: data.clientName },

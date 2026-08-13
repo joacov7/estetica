@@ -9,6 +9,7 @@ import { getCurrentOrg } from "@/features/org/current";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { NoteForm } from "@/features/clients/note-form";
+import { ReferralLink } from "@/features/referrals/referral-link";
 import type { AppointmentStatus } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +37,17 @@ export default async function ClientDetailPage({
     .where(and(eq(clients.id, id), eq(clients.organizationId, org.id)))
     .limit(1);
   if (!client) notFound();
+
+  // Referral info: who referred her, and how many she brought.
+  const referredClients = await db
+    .select({ id: clients.id })
+    .from(clients)
+    .where(and(eq(clients.referredById, id), eq(clients.organizationId, org.id)));
+  let referrerName: string | null = null;
+  if (client.referredById) {
+    const [r] = await db.select({ name: clients.name }).from(clients).where(eq(clients.id, client.referredById)).limit(1);
+    referrerName = r?.name ?? null;
+  }
 
   const [appts, notes] = await Promise.all([
     db
@@ -140,8 +152,29 @@ export default async function ClientDetailPage({
           </div>
         </div>
 
-        {/* Notes */}
-        <div>
+        {/* Referral + Notes */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="mb-3 font-display text-lg font-semibold">Referidos</h2>
+            <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
+              {referrerName && (
+                <p className="text-sm text-muted-foreground">
+                  Recomendada por <span className="font-medium text-foreground">{referrerName}</span>
+                </p>
+              )}
+              <p className="text-sm">
+                Trajo <span className="font-medium text-primary">{referredClients.length}</span>{" "}
+                {referredClients.length === 1 ? "clienta" : "clientas"}.
+              </p>
+              {client.referralCode && (
+                <>
+                  <p className="text-sm text-muted-foreground">Link para que comparta:</p>
+                  <ReferralLink slug={org.slug} code={client.referralCode} />
+                </>
+              )}
+            </div>
+          </div>
+
           <h2 className="mb-3 font-display text-lg font-semibold">Notas</h2>
           <div className="space-y-3 rounded-2xl border border-border bg-card p-4">
             <NoteForm clientId={client.id} />
