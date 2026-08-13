@@ -15,15 +15,15 @@ export function formatMoney(
 
 /** Compute the required deposit (in cents) for a service. */
 export function depositCents(service: {
-  price_cents: number;
-  deposit_type: "none" | "fixed" | "percentage";
-  deposit_value: number;
+  priceCents: number;
+  depositType: "none" | "fixed" | "percentage";
+  depositValue: number;
 }): number {
-  switch (service.deposit_type) {
+  switch (service.depositType) {
     case "fixed":
-      return Math.round(service.deposit_value);
+      return Math.round(service.depositValue);
     case "percentage":
-      return Math.round((service.price_cents * service.deposit_value) / 100);
+      return Math.round((service.priceCents * service.depositValue) / 100);
     default:
       return 0;
   }

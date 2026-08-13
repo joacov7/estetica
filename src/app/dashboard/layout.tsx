@@ -11,7 +11,9 @@ import {
   ListChecks,
   Images,
   Settings,
+  LogOut,
 } from "lucide-react";
+import { signOut } from "@/auth";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -51,6 +53,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex items-center justify-end border-b border-border bg-card px-6 py-3">
+          <form
+            action={async () => {
+              "use server";
+              await signOut({ redirectTo: "/login" });
+            }}
+          >
+            <button
+              type="submit"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+            >
+              <LogOut className="size-4" /> Salir
+            </button>
+          </form>
+        </header>
         <main className="flex-1 p-6 md:p-8">{children}</main>
 
         {/* Bottom nav (mobile) */}

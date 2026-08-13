@@ -21,13 +21,13 @@ type Org = {
 type Service = {
   id: string;
   name: string;
-  price_cents: number;
-  duration_min: number;
-  deposit_type: "none" | "fixed" | "percentage";
-  deposit_value: number;
+  priceCents: number;
+  durationMin: number;
+  depositType: "none" | "fixed" | "percentage";
+  depositValue: number;
 };
 type Professional = { id: string; name: string };
-type ProfService = { professional_id: string; service_id: string };
+type ProfService = { professionalId: string; serviceId: string };
 type Slot = { startIso: string; label: string; professionalId: string };
 
 const WEEKDAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
@@ -75,9 +75,9 @@ export function BookingWizard({
 
   // Professionals eligible for the chosen service (empty mapping = does all).
   function eligiblePros(sid: string): Professional[] {
-    const mapped = profServices.filter((ps) => ps.service_id === sid);
+    const mapped = profServices.filter((ps) => ps.serviceId === sid);
     if (mapped.length === 0) return professionals;
-    const ids = new Set(mapped.map((ps) => ps.professional_id));
+    const ids = new Set(mapped.map((ps) => ps.professionalId));
     return professionals.filter((p) => ids.has(p.id));
   }
 
@@ -158,7 +158,7 @@ export function BookingWizard({
           <Row label="Profesional" value={proName} />
           <Row label="Fecha" value={`${partsOf(date!).weekday} ${partsOf(date!).day} ${partsOf(date!).month}`} />
           <Row label="Hora" value={slot.label} />
-          <Row label="Precio" value={formatMoney(service.price_cents, currency)} />
+          <Row label="Precio" value={formatMoney(service.priceCents, currency)} />
           <Row label="Código" value={result.bookingCode} />
         </div>
         <div className="mt-6 flex flex-col gap-3">
@@ -200,10 +200,10 @@ export function BookingWizard({
               >
                 <div>
                   <p className="font-medium">{s.name}</p>
-                  <p className="text-sm text-muted-foreground">{s.duration_min} min</p>
+                  <p className="text-sm text-muted-foreground">{s.durationMin} min</p>
                 </div>
                 <span className="font-display font-semibold text-primary">
-                  {formatMoney(s.price_cents, currency)}
+                  {formatMoney(s.priceCents, currency)}
                 </span>
               </button>
             ))}
@@ -320,7 +320,7 @@ export function BookingWizard({
             <Row label="Profesional" value={professionals.find((p) => p.id === slot.professionalId)?.name ?? ""} />
             <Row label="Fecha" value={`${partsOf(date).weekday} ${partsOf(date).day} ${partsOf(date).month}`} />
             <Row label="Hora" value={slot.label} />
-            <Row label="Precio" value={formatMoney(service.price_cents, currency)} />
+            <Row label="Precio" value={formatMoney(service.priceCents, currency)} />
             {depositCents(service) > 0 && (
               <Row label="Seña requerida" value={formatMoney(depositCents(service), currency)} />
             )}

@@ -1,50 +1,31 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
-import type { Organization } from "@/types/database";
+import { eq } from "drizzle-orm";
+import { auth } from "@/auth";
+import { db } from "@/db";
+import { organizations, organizationMembers } from "@/db/schema";
+import type { Organization } from "@/db/schema";
 
 /**
- * Resolve the organization for the current dashboard session.
- *
- * If a member is logged in, returns their organization (RLS-safe). Until the
- * auth/login flow is wired, this falls back to the first organization so the
- * dashboard is usable in development. Replace the fallback with a redirect to
- * /login once auth is in place. The `isDevFallback` flag surfaces this in the UI.
+ * Resolve the organization for the current dashboard session, based on the
+ * authenticated member. Returns null when there is no session or the user
+ * has no organization yet. (/dashboard is already gated by the middleware.)
  */
 export async function getCurrentOrg(): Promise<{
   org: Organization | null;
-  isDevFallback: boolean;
+  userId: string | null;
+  role: string | null;
 }> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+  if (!userId) return { org: null, userId: null, role: null };
 
-  if (user) {
-    const { data: membership } = await supabase
-      .from("organization_members")
-      .select("organization_id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
+  const [row] = await db
+    .select({ org: organizations, role: organizationMembers.role })
+    .from(organizationMembers)
+    .innerJoin(organizations, eq(organizations.id, organizationMembers.organizationId))
+    .where(eq(organizationMembers.userId, userId))
+    .limit(1);
 
-    if (membership) {
-      const { data: org } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("id", membership.organization_id)
-        .single();
-      if (org) return { org, isDevFallback: false };
-    }
-  }
-
-  // --- development fallback (no auth yet) ----------------------------------
-  const admin = createAdminClient();
-  const { data: org } = await admin
-    .from("organizations")
-    .select("*")
-    .order("created_at")
-    .limit(1)
-    .maybeSingle();
-  return { org: org ?? null, isDevFallback: true };
+  if (!row) return { org: null, userId, role: null };
+  return { org: row.org, userId, role: row.role };
 }

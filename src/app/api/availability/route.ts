@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { organizations } from "@/db/schema";
 import { getAvailableSlots } from "@/services/availability";
 import { availabilityQuerySchema } from "@/lib/validations/booking";
 
@@ -12,15 +14,12 @@ export async function POST(req: Request) {
   }
   const { organizationId, professionalId, serviceIds, date } = parsed.data;
 
-  const db = createAdminClient();
-  const { data: org } = await db
-    .from("organizations")
-    .select("timezone")
-    .eq("id", organizationId)
-    .single();
-  if (!org) {
-    return NextResponse.json({ error: "Negocio no encontrado" }, { status: 404 });
-  }
+  const [org] = await db
+    .select({ timezone: organizations.timezone })
+    .from(organizations)
+    .where(eq(organizations.id, organizationId))
+    .limit(1);
+  if (!org) return NextResponse.json({ error: "Negocio no encontrado" }, { status: 404 });
 
   try {
     const slots = await getAvailableSlots({

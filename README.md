@@ -6,47 +6,43 @@ estética. Reserva pública mobile-first + panel administrativo.
 
 ## Stack
 
-Next.js (App Router) · TypeScript · Tailwind CSS · shadcn-style UI · Supabase
-(PostgreSQL, Auth, Storage, RLS) · React Hook Form + Zod · TanStack Query ·
-Vitest · Vercel.
+Next.js (App Router) · TypeScript · Tailwind CSS · shadcn-style UI ·
+**Postgres (Neon) + Drizzle ORM** · **Auth.js (NextAuth)** · React Hook Form +
+Zod · TanStack Query · Vitest · Vercel.
 
-## Estado actual (Fase 1 — en progreso)
+> Sin Supabase. La base es Postgres directo (Neon, free tier) con Drizzle, y la
+> autenticación es Auth.js sobre la misma base. La **multi-tenancy se garantiza
+> en la capa de queries** (todo scopeado por `organizationId` según la sesión),
+> no con RLS.
+
+## Estado actual (Fase 1)
 
 **Funcional y probado**
 
-- **Base de datos multi-tenant completa** — `supabase/migrations/`: schema,
-  enums, índices, foreign keys, **RLS en todas las tablas** y un **exclusion
-  constraint de Postgres** que hace imposible el doble-booking a nivel base de
-  datos (no solo aplicación).
-- **Motor de disponibilidad** (`src/services/availability/`) — lógica pura de
-  intervalos (10 tests unitarios) + capa tz-aware que respeta horario del
-  negocio, del profesional, duración, buffer de limpieza, turnos existentes,
-  bloqueos y lead time.
-- **Reserva pública** (`/[slug]` y `/[slug]/reservar`) — flujo de 6 pasos,
-  mobile-first, sin registro obligatorio. Revalida la disponibilidad en el
-  servidor, hace upsert del cliente por teléfono, aplica rate-limiting y crea el
-  turno confiando en el constraint de la DB. Pantalla de confirmación con código
-  de reserva.
-- **Panel** (`/dashboard`) — layout con sidebar/bottom-nav, dashboard con
-  métricas reales del día, y **gestión de servicios** funcional (crear /
-  activar / desactivar).
-- **Abstracciones preparadas** — `PaymentProvider` (schema de `payments` +
-  estados de seña), `NotificationProvider`, tokens firmados para gestionar la
-  reserva sin cuenta, y rate-limiter con interfaz intercambiable.
+- **Base de datos multi-tenant** (`src/db/schema.ts` + `drizzle/`): 23 tablas,
+  índices, FKs y un **exclusion constraint de Postgres** (`btree_gist` +
+  `tstzrange`) que hace **imposible el doble-booking a nivel base de datos**.
+- **Autenticación** (Auth.js, credenciales): registro que crea usuario +
+  negocio + membresía `owner` en una transacción, login, logout y protección de
+  `/dashboard` por middleware.
+- **Motor de disponibilidad** (`src/services/availability/`): lógica pura de
+  intervalos (10 tests) + capa tz-aware (horarios, duración, buffer, turnos,
+  bloqueos, lead time).
+- **Reserva pública** (`/[slug]` y `/[slug]/reservar`): flujo mobile-first de 6
+  pasos, sin registro obligatorio, revalidación en servidor, upsert de cliente
+  por teléfono, rate-limiting y código de reserva.
+- **Panel** (`/dashboard`): métricas reales del día + gestión de servicios
+  (crear / activar / desactivar) con autorización por rol.
+- **Abstracciones preparadas**: pagos (schema + estados de seña),
+  notificaciones, tokens firmados para gestionar reservas sin cuenta.
 
-**Próximos pasos (no incluidos aún)**
-
-- Autenticación (login/signup, crear organización + membresía). Hoy el panel usa
-  un *fallback de desarrollo* que muestra la primera organización sin login —
-  ver `src/features/org/current.ts`. Es el próximo módulo y deja el panel detrás
-  de auth.
-- Agenda por profesional (crear/editar/arrastrar/estados), clientes, ficha
-  técnica de uñas, caja, comisiones, promociones, lista de espera, notificaciones
-  reales, WhatsApp, analytics — el schema ya está preparado para todo esto.
+**Próximos pasos**: agenda por profesional (crear/arrastrar/estados), clientes,
+ficha técnica de uñas, y Fases 2–3 (caja, comisiones, notificaciones reales,
+WhatsApp, analytics). El schema ya está preparado para todo esto.
 
 ## Puesta en marcha local
 
-Requisitos: Node 20+, [Supabase CLI](https://supabase.com/docs/guides/cli).
+Requisitos: Node 20+ y una base Postgres (Neon gratis, o Postgres local).
 
 ```bash
 # 1. Dependencias
@@ -54,66 +50,66 @@ npm install
 
 # 2. Variables de entorno
 cp .env.example .env.local
-#   Completá las claves (ver más abajo cómo obtenerlas).
+#    DATABASE_URL   → connection string de Neon (pooled)
+#    AUTH_SECRET    → openssl rand -base64 32
+#    BOOKING_TOKEN_SECRET → openssl rand -base64 32
 
-# 3. Base de datos: aplica migrations + seed
-supabase start          # levanta Supabase local (Docker)
-supabase db reset       # corre migrations/ y seed.sql
+# 3. Base de datos: aplicar migraciones + seed
+npm run db:migrate     # aplica drizzle/ (tablas + constraint anti-doble-reserva)
+npm run db:seed        # datos de ejemplo "Buenas Uñas"
 
 # 4. App
-npm run dev             # http://localhost:3000
+npm run dev            # http://localhost:3000
 ```
 
-Scripts útiles:
+El seed crea un usuario demo para entrar al panel:
+**`demo@buenas-unas.test` / `password123`**
+
+Scripts:
 
 ```bash
-npm run typecheck   # tsc --noEmit
-npm run test        # vitest (motor de disponibilidad)
-npm run build       # build de producción
+npm run typecheck      # tsc --noEmit
+npm run test           # vitest (motor de disponibilidad)
+npm run build          # build de producción
+npm run db:generate    # genera migraciones desde el schema de Drizzle
 ```
 
 Rutas para probar:
 
-- `/` — landing
-- `/buenas-unas` — página pública del negocio de ejemplo (seed)
+- `/` — landing · `/login` · `/signup`
+- `/buenas-unas` — página pública del negocio de ejemplo
 - `/buenas-unas/reservar` — flujo de reserva
-- `/dashboard` — panel
+- `/dashboard` — panel (requiere login)
 
 ## Deploy en Vercel
 
-1. **Creá un proyecto en Supabase** (supabase.com) y obtené, en *Project
-   Settings → API*:
-   - `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
-   - `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `service_role` key → `SUPABASE_SERVICE_ROLE_KEY` (¡solo server!)
-2. **Aplicá el schema** a ese proyecto:
+1. **Creá una base en [Neon](https://neon.tech)** (free) y copiá la
+   **pooled connection string** → `DATABASE_URL`.
+2. **Aplicá el schema** a esa base:
    ```bash
-   supabase link --project-ref <tu-project-ref>
-   supabase db push          # aplica supabase/migrations
-   # (opcional) cargá el seed manualmente desde el SQL editor con supabase/seed.sql
+   DATABASE_URL="...neon..." npm run db:migrate
+   DATABASE_URL="...neon..." npm run db:seed   # opcional
    ```
-3. **Conectá el repo a Vercel** (New Project → importá este repositorio de
-   GitHub). Framework: Next.js (autodetectado).
-4. **Cargá las variables de entorno** en Vercel (Settings → Environment
-   Variables): las cuatro de arriba más:
-   - `NEXT_PUBLIC_SITE_URL` = la URL pública del deploy
-   - `BOOKING_TOKEN_SECRET` = `openssl rand -base64 32`
-5. **Deploy.** Vercel construye y publica automáticamente en cada push.
-
-> El `service_role` key nunca se expone al navegador: solo se usa en Server
-> Actions / Route Handlers (`src/lib/supabase/admin.ts`, marcado `server-only`).
+3. **Conectá el repo a Vercel** (New Project → importá este repositorio).
+   Framework: Next.js (autodetectado).
+4. **Variables de entorno** en Vercel (Settings → Environment Variables):
+   - `DATABASE_URL` — la pooled string de Neon
+   - `AUTH_SECRET` — `openssl rand -base64 32`
+   - `AUTH_URL` — la URL pública del deploy (ej. `https://tu-app.vercel.app`)
+   - `BOOKING_TOKEN_SECRET` — `openssl rand -base64 32`
+   - `NEXT_PUBLIC_SITE_URL` — la URL pública del deploy
+5. **Deploy.** Vercel construye y publica en cada push.
 
 ## Estructura
 
 ```
 src/
-  app/                 rutas (App Router): landing, /[slug] público, /dashboard, /api
-  components/ui/        design system (Button, Card, Input, Badge, StatCard, ...)
-  features/             módulos por dominio (booking, services, org)
+  app/                  rutas: landing, /[slug] público, /dashboard, /login, /signup, /api
+  auth.ts, auth.config.ts   configuración de Auth.js (server + edge-safe)
+  components/ui/         design system (Button, Card, Input, Badge, StatCard, ...)
+  db/                    schema Drizzle, cliente y seed
+  features/             módulos por dominio (auth, booking, services, org)
   services/availability/ motor de disponibilidad (core puro + tz-aware)
-  lib/                  supabase clients, money, tokens, rate-limit, validaciones Zod
-  types/                tipos de la base de datos
-supabase/
-  migrations/           schema + RLS + constraints (SQL versionado)
-  seed.sql              datos de ejemplo ("Buenas Uñas")
+  lib/                   money, tokens, rate-limit, validaciones Zod
+drizzle/                migraciones SQL (tablas + exclusion constraint)
 ```

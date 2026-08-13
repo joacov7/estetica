@@ -1,49 +1,50 @@
-import { DollarSign, CalendarCheck, Users, Scissors, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import { DollarSign, CalendarCheck, Users, Scissors } from "lucide-react";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
+import { and, count, eq, gte, inArray, lte } from "drizzle-orm";
+import { db } from "@/db";
+import { services, professionals, clients, appointments, appointmentServices } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { StatCard } from "@/components/ui/stat-card";
+import { buttonVariants } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardHome() {
-  const { org, isDevFallback } = await getCurrentOrg();
-  if (!org) {
-    return <EmptyOrg />;
-  }
+const ACTIVE = ["reservado", "confirmado", "atendido"] as const;
 
-  const db = createAdminClient();
+export default async function DashboardHome() {
+  const { org } = await getCurrentOrg();
+  if (!org) return <NoOrg />;
+
   const todayStr = formatInTimeZone(new Date(), org.timezone, "yyyy-MM-dd");
   const dayStart = fromZonedTime(`${todayStr}T00:00:00`, org.timezone).toISOString();
   const dayEnd = fromZonedTime(`${todayStr}T23:59:59`, org.timezone).toISOString();
 
-  const [servicesCount, prosCount, clientsCount, todaysAppts] = await Promise.all([
-    db.from("services").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", true),
-    db.from("professionals").select("id", { count: "exact", head: true }).eq("organization_id", org.id).eq("is_active", true),
-    db.from("clients").select("id", { count: "exact", head: true }).eq("organization_id", org.id),
+  const [[svcCount], [proCount], [cliCount], todays] = await Promise.all([
+    db.select({ c: count() }).from(services).where(and(eq(services.organizationId, org.id), eq(services.isActive, true))),
+    db.select({ c: count() }).from(professionals).where(and(eq(professionals.organizationId, org.id), eq(professionals.isActive, true))),
+    db.select({ c: count() }).from(clients).where(eq(clients.organizationId, org.id)),
     db
-      .from("appointments")
-      .select("id")
-      .eq("organization_id", org.id)
-      .gte("start_at", dayStart)
-      .lte("start_at", dayEnd)
-      .in("status", ["reservado", "confirmado", "atendido"]),
+      .select({ id: appointments.id })
+      .from(appointments)
+      .where(
+        and(
+          eq(appointments.organizationId, org.id),
+          gte(appointments.startAt, dayStart),
+          lte(appointments.startAt, dayEnd),
+          inArray(appointments.status, [...ACTIVE]),
+        ),
+      ),
   ]);
 
-  const appts = todaysAppts.data ?? [];
-
-  // Sum today's revenue from the snapshotted appointment_services.
   let revenue = 0;
-  if (appts.length > 0) {
-    const { data: lines } = await db
-      .from("appointment_services")
-      .select("price_cents")
-      .in(
-        "appointment_id",
-        appts.map((a) => a.id),
-      );
-    revenue = (lines ?? []).reduce((s, x) => s + x.price_cents, 0);
+  if (todays.length > 0) {
+    const lines = await db
+      .select({ priceCents: appointmentServices.priceCents })
+      .from(appointmentServices)
+      .where(inArray(appointmentServices.appointmentId, todays.map((a) => a.id)));
+    revenue = lines.reduce((s, x) => s + x.priceCents, 0);
   }
 
   return (
@@ -53,30 +54,16 @@ export default async function DashboardHome() {
         <p className="text-muted-foreground">Resumen de hoy</p>
       </header>
 
-      {isDevFallback && (
-        <div className="flex items-start gap-2 rounded-xl border border-gold/40 bg-gold/10 p-3 text-sm text-gold-foreground">
-          <AlertCircle className="mt-0.5 size-4 shrink-0" />
-          <span>
-            Modo desarrollo: no hay sesión iniciada, mostrando la primera organización.
-            La autenticación es el próximo paso — este panel quedará detrás de login.
-          </span>
-        </div>
-      )}
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Facturación de hoy"
-          value={formatMoney(revenue, { currency: org.currency, locale: org.locale })}
-          icon={DollarSign}
-        />
-        <StatCard label="Turnos de hoy" value={String(appts.length)} icon={CalendarCheck} />
-        <StatCard label="Servicios activos" value={String(servicesCount.count ?? 0)} icon={Scissors} />
-        <StatCard label="Clientes" value={String(clientsCount.count ?? 0)} icon={Users} />
+        <StatCard label="Facturación de hoy" value={formatMoney(revenue, { currency: org.currency, locale: org.locale })} icon={DollarSign} />
+        <StatCard label="Turnos de hoy" value={String(todays.length)} icon={CalendarCheck} />
+        <StatCard label="Servicios activos" value={String(svcCount.c)} icon={Scissors} />
+        <StatCard label="Clientes" value={String(cliCount.c)} icon={Users} />
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-display text-lg font-semibold">Profesionales activos</h2>
-        <p className="mt-1 text-3xl font-semibold">{prosCount.count ?? 0}</p>
+        <p className="mt-1 text-3xl font-semibold">{proCount.c}</p>
         <p className="text-sm text-muted-foreground">
           La agenda por profesional y el detalle de turnos se construyen a continuación.
         </p>
@@ -85,14 +72,16 @@ export default async function DashboardHome() {
   );
 }
 
-function EmptyOrg() {
+function NoOrg() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center text-center">
-      <h1 className="font-display text-2xl font-semibold">No hay ninguna organización</h1>
+      <h1 className="font-display text-2xl font-semibold">Todavía no tenés un negocio</h1>
       <p className="mt-2 max-w-sm text-muted-foreground">
-        Corré las migraciones y el seed de Supabase para crear la organización de ejemplo
-        &ldquo;Buenas Uñas&rdquo;.
+        Creá tu negocio para empezar a cargar servicios, profesionales y recibir turnos.
       </p>
+      <Link href="/signup" className={buttonVariants({ className: "mt-6" })}>
+        Crear mi negocio
+      </Link>
     </div>
   );
 }
