@@ -21,6 +21,17 @@ export const bookingSchema = z.object({
 
 export type BookingInput = z.infer<typeof bookingSchema>;
 
+/** Manual booking created by staff from the admin agenda. */
+export const manualBookingSchema = z.object({
+  professionalId: z.string().uuid(),
+  serviceIds: z.array(z.string().uuid()).min(1, "Elegí un servicio"),
+  startIso: z.string().datetime(),
+  clientName: z.string().trim().min(2, "Ingresá el nombre"),
+  clientPhone: z.string().trim().min(6, "Ingresá el WhatsApp").max(20),
+});
+
+export type ManualBookingInput = z.infer<typeof manualBookingSchema>;
+
 export const availabilityQuerySchema = z.object({
   organizationId: z.string().uuid(),
   professionalId: z.string().uuid(),

@@ -3,10 +3,11 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { db } from "@/db";
-import { professionals, appointments, clients, appointmentServices } from "@/db/schema";
+import { professionals, appointments, clients, appointmentServices, services } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
 import { buttonVariants } from "@/components/ui/button";
 import { AgendaBoard, type AgendaAppointment } from "@/features/agenda/agenda-board";
+import { NewAppointmentDialog } from "@/features/agenda/new-appointment-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +36,18 @@ export default async function AgendaPage({
   const dayStartIso = dayRef.toISOString();
   const dayEndIso = new Date(dayRef.getTime() + DAY_MS).toISOString();
 
-  const pros = await db
-    .select({ id: professionals.id, name: professionals.name })
-    .from(professionals)
-    .where(and(eq(professionals.organizationId, org.id), eq(professionals.isActive, true)))
-    .orderBy(asc(professionals.sortOrder));
+  const [pros, svc] = await Promise.all([
+    db
+      .select({ id: professionals.id, name: professionals.name })
+      .from(professionals)
+      .where(and(eq(professionals.organizationId, org.id), eq(professionals.isActive, true)))
+      .orderBy(asc(professionals.sortOrder)),
+    db
+      .select({ id: services.id, name: services.name, durationMin: services.durationMin })
+      .from(services)
+      .where(and(eq(services.organizationId, org.id), eq(services.isActive, true)))
+      .orderBy(asc(services.sortOrder)),
+  ]);
 
   const rows = await db
     .select({
@@ -110,6 +118,14 @@ export default async function AgendaPage({
           <Link href={`/dashboard/agenda?date=${addDays(date, 1)}`} className={buttonVariants({ variant: "outline", size: "icon" })}>
             <ChevronRight className="size-4" />
           </Link>
+          {pros.length > 0 && svc.length > 0 && (
+            <NewAppointmentDialog
+              org={{ id: org.id, timezone: org.timezone }}
+              professionals={pros}
+              services={svc}
+              defaultDate={date}
+            />
+          )}
         </div>
       </header>
 
