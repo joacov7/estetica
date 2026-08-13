@@ -12,6 +12,7 @@ import {
   Images,
   Settings,
   LogOut,
+  BarChart3,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
@@ -19,6 +20,7 @@ import { auth, signOut } from "@/auth";
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/agenda", label: "Agenda", icon: CalendarDays },
+  { href: "/dashboard/analytics", label: "Estadísticas", icon: BarChart3 },
   { href: "/dashboard/clientes", label: "Clientes", icon: Users },
   { href: "/dashboard/servicios", label: "Servicios", icon: Scissors },
   { href: "/dashboard/profesionales", label: "Profesionales", icon: UserCog },
