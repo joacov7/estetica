@@ -4,6 +4,23 @@ Sistema web multi-tenant para gestión de turnos, clientes y operaciones de
 estudios de manicura, pestañas, cejas, peluquerías, barberías y centros de
 estética. Reserva pública mobile-first + panel administrativo.
 
+## Deploy en 1 clic
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fjoacov7%2Festetica&env=DATABASE_URL,AUTH_SECRET,AUTH_URL,BOOKING_TOKEN_SECRET,NEXT_PUBLIC_SITE_URL&envDescription=Base%20Postgres%20(Neon)%20y%20secretos%20de%20la%20app&project-name=estetica&repository-name=estetica)
+
+1. Antes, creá una base gratis en **[Neon](https://neon.tech)** y copiá su
+   **pooled connection string**.
+2. Tocá el botón. Vercel te pide las variables de entorno:
+   - `DATABASE_URL` → la pooled string de Neon
+   - `AUTH_SECRET` → una cadena aleatoria larga (`openssl rand -base64 32`)
+   - `AUTH_URL` → la URL del deploy (podés poner un valor provisorio y corregirlo luego)
+   - `BOOKING_TOKEN_SECRET` → otra cadena aleatoria larga
+   - `NEXT_PUBLIC_SITE_URL` → la URL del deploy
+3. Deploy. Las tablas se crean solas (migraciones on-build). Después, corregí
+   `AUTH_URL` / `NEXT_PUBLIC_SITE_URL` con la URL final y hacé **Redeploy**.
+4. (Opcional) Cargá datos de ejemplo pegando `drizzle/seed.sql` en el SQL Editor
+   de Neon → login demo `demo@buenas-unas.test` / `password123`.
+
 ## Stack
 
 Next.js (App Router) · TypeScript · Tailwind CSS · shadcn-style UI ·
