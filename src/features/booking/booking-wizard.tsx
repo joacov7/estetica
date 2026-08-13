@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { formatMoney, depositCents } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { createPublicBooking, type BookingResult } from "./actions";
+import { Turnstile } from "./turnstile";
+
+const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 type Org = { id: string; slug: string; name: string; timezone: string; currency: string; locale: string };
 type Service = {
@@ -62,6 +65,7 @@ export function BookingWizard({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [referralCode, setReferralCode] = useState(initialRef);
+  const [captchaToken, setCaptchaToken] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Extract<BookingResult, { ok: true }> | null>(null);
@@ -125,6 +129,7 @@ export function BookingWizard({
       serviceIds,
       startIso: slot.startIso,
       client: { name, phone, email, referralCode },
+      captchaToken,
     });
     setSubmitting(false);
     if (res.ok) setResult(res);
@@ -286,8 +291,18 @@ export function BookingWizard({
             <Row label="Precio" value={formatMoney(totalPrice, currency)} />
             {totalDeposit > 0 && <Row label="Seña requerida" value={formatMoney(totalDeposit, currency)} />}
           </div>
+          {TURNSTILE_SITE_KEY && (
+            <div className="mt-4">
+              <Turnstile siteKey={TURNSTILE_SITE_KEY} onToken={setCaptchaToken} />
+            </div>
+          )}
           {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
-          <Button className="mt-6 w-full" size="lg" disabled={submitting} onClick={submit}>
+          <Button
+            className="mt-6 w-full"
+            size="lg"
+            disabled={submitting || (!!TURNSTILE_SITE_KEY && !captchaToken)}
+            onClick={submit}
+          >
             {submitting ? <Loader2 className="size-4 animate-spin" /> : <CalendarCheck className="size-4" />} Confirmar turno
           </Button>
           <BackButton onClick={() => setStep(4)} />

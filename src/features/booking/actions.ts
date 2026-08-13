@@ -14,7 +14,8 @@ import {
 import { getAvailableSlots } from "@/services/availability";
 import { bookingSchema, type BookingInput } from "@/lib/validations/booking";
 import { createBookingToken } from "@/lib/booking-token";
-import { bookingLimiter } from "@/lib/rate-limit";
+import { bookingLimiter, clientIp } from "@/lib/rate-limit";
+import { verifyCaptcha } from "@/lib/captcha";
 import { generateReferralCode } from "@/lib/referral";
 
 export type BookingResult =
@@ -47,11 +48,16 @@ export async function createPublicBooking(input: BookingInput): Promise<BookingR
   const data = parsed.data;
 
   // --- rate limit by IP + phone -------------------------------------------
-  const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = clientIp(await headers());
   const limited = await bookingLimiter.check(`${ip}:${data.client.phone}`);
   if (!limited.ok) {
     return { ok: false, error: "Demasiados intentos. Probá de nuevo en unos minutos." };
+  }
+
+  // --- bot protection (Turnstile; skipped if not configured) --------------
+  const captchaOk = await verifyCaptcha(data.captchaToken, ip);
+  if (!captchaOk) {
+    return { ok: false, error: "No pudimos verificar que sos una persona. Recargá e intentá de nuevo." };
   }
 
   // --- org (timezone) ------------------------------------------------------
