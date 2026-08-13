@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Loader2, X } from "lucide-react";
+import { Plus, Loader2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,7 @@ export function NewAppointmentDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [professionalId, setProfessionalId] = useState("");
-  const [serviceId, setServiceId] = useState("");
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [date, setDate] = useState(defaultDate);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -40,7 +40,7 @@ export function NewAppointmentDialog({
 
   function reset() {
     setProfessionalId("");
-    setServiceId("");
+    setServiceIds([]);
     setDate(defaultDate);
     setSlots([]);
     setStartIso(null);
@@ -49,15 +49,19 @@ export function NewAppointmentDialog({
     setError(null);
   }
 
-  async function loadSlots(pId: string, sId: string, d: string) {
-    if (!pId || !sId || !d) return;
+  async function loadSlots(pId: string, sIds: string[], d: string) {
+    if (!pId || sIds.length === 0 || !d) {
+      setSlots([]);
+      setStartIso(null);
+      return;
+    }
     setLoadingSlots(true);
     setSlots([]);
     setStartIso(null);
     const res = await fetch("/api/availability", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ organizationId: org.id, professionalId: pId, serviceIds: [sId], date: d }),
+      body: JSON.stringify({ organizationId: org.id, professionalId: pId, serviceIds: sIds, date: d }),
     });
     if (res.ok) {
       const json: { slots: Slot[] } = await res.json();
@@ -66,17 +70,17 @@ export function NewAppointmentDialog({
     setLoadingSlots(false);
   }
 
+  function toggleService(id: string) {
+    const next = serviceIds.includes(id) ? serviceIds.filter((x) => x !== id) : [...serviceIds, id];
+    setServiceIds(next);
+    loadSlots(professionalId, next, date);
+  }
+
   async function submit() {
-    if (!professionalId || !serviceId || !startIso) return;
+    if (!professionalId || serviceIds.length === 0 || !startIso) return;
     setSubmitting(true);
     setError(null);
-    const res = await createManualAppointment({
-      professionalId,
-      serviceIds: [serviceId],
-      startIso,
-      clientName,
-      clientPhone,
-    });
+    const res = await createManualAppointment({ professionalId, serviceIds, startIso, clientName, clientPhone });
     setSubmitting(false);
     if (res.ok) {
       setOpen(false);
@@ -84,11 +88,11 @@ export function NewAppointmentDialog({
       router.refresh();
     } else {
       setError(res.error);
-      if (res.slotTaken) loadSlots(professionalId, serviceId, date);
+      if (res.slotTaken) loadSlots(professionalId, serviceIds, date);
     }
   }
 
-  const canSubmit = professionalId && serviceId && startIso && clientName.trim().length >= 2 && clientPhone.trim().length >= 6;
+  const canSubmit = professionalId && serviceIds.length > 0 && startIso && clientName.trim().length >= 2 && clientPhone.trim().length >= 6;
 
   return (
     <>
@@ -101,87 +105,75 @@ export function NewAppointmentDialog({
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-card p-6 shadow-xl sm:rounded-2xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="font-display text-xl font-semibold">Nuevo turno</h2>
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
-                <X className="size-5" />
-              </button>
+              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="size-5" /></button>
             </div>
 
             <div className="space-y-4">
-              <Field label="Profesional">
-                <Select
+              <div className="space-y-1.5">
+                <Label>Profesional</Label>
+                <select
                   value={professionalId}
-                  onChange={(v) => {
-                    setProfessionalId(v);
-                    loadSlots(v, serviceId, date);
-                  }}
-                  placeholder="Elegí profesional"
-                  options={professionals.map((p) => ({ value: p.id, label: p.name }))}
-                />
-              </Field>
+                  onChange={(e) => { setProfessionalId(e.target.value); loadSlots(e.target.value, serviceIds, date); }}
+                  className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="" disabled>Elegí profesional</option>
+                  {professionals.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
 
-              <Field label="Servicio">
-                <Select
-                  value={serviceId}
-                  onChange={(v) => {
-                    setServiceId(v);
-                    loadSlots(professionalId, v, date);
-                  }}
-                  placeholder="Elegí servicio"
-                  options={services.map((s) => ({ value: s.id, label: `${s.name} · ${s.durationMin}min` }))}
-                />
-              </Field>
+              <div className="space-y-1.5">
+                <Label>Servicios</Label>
+                <div className="space-y-2">
+                  {services.map((s) => {
+                    const on = serviceIds.includes(s.id);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => toggleService(s.id)}
+                        className={cn("flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition-colors", on ? "border-primary bg-secondary/50" : "border-border hover:bg-muted")}
+                      >
+                        <span className={cn("flex size-5 items-center justify-center rounded-full border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
+                          {on && <Check className="size-3.5" />}
+                        </span>
+                        <span className="flex-1 font-medium">{s.name}</span>
+                        <span className="text-muted-foreground">{s.durationMin}min</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-              <Field label="Fecha">
-                <Input
-                  type="date"
-                  value={date}
-                  onChange={(e) => {
-                    setDate(e.target.value);
-                    loadSlots(professionalId, serviceId, e.target.value);
-                  }}
-                />
-              </Field>
+              <div className="space-y-1.5">
+                <Label>Fecha</Label>
+                <Input type="date" value={date} onChange={(e) => { setDate(e.target.value); loadSlots(professionalId, serviceIds, e.target.value); }} />
+              </div>
 
-              {professionalId && serviceId && (
-                <Field label="Horario">
+              {professionalId && serviceIds.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>Horario</Label>
                   {loadingSlots ? (
-                    <div className="flex justify-center py-3 text-muted-foreground">
-                      <Loader2 className="size-5 animate-spin" />
-                    </div>
+                    <div className="flex justify-center py-3 text-muted-foreground"><Loader2 className="size-5 animate-spin" /></div>
                   ) : slots.length === 0 ? (
                     <p className="py-2 text-sm text-muted-foreground">No hay horarios libres ese día.</p>
                   ) : (
                     <div className="grid grid-cols-4 gap-2">
                       {slots.map((s) => (
-                        <button
-                          key={s.startIso}
-                          onClick={() => setStartIso(s.startIso)}
-                          className={cn(
-                            "rounded-lg border py-2 text-sm transition-colors",
-                            startIso === s.startIso
-                              ? "border-primary bg-secondary/60"
-                              : "border-border hover:bg-muted",
-                          )}
-                        >
+                        <button key={s.startIso} onClick={() => setStartIso(s.startIso)} className={cn("rounded-lg border py-2 text-sm transition-colors", startIso === s.startIso ? "border-primary bg-secondary/60" : "border-border hover:bg-muted")}>
                           {s.label}
                         </button>
                       ))}
                     </div>
                   )}
-                </Field>
+                </div>
               )}
 
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Nombre">
-                  <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Clienta" />
-                </Field>
-                <Field label="WhatsApp">
-                  <Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} inputMode="tel" placeholder="+54 9 11..." />
-                </Field>
+                <div className="space-y-1.5"><Label>Nombre</Label><Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Clienta" /></div>
+                <div className="space-y-1.5"><Label>WhatsApp</Label><Input value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} inputMode="tel" placeholder="+54 9 11..." /></div>
               </div>
 
               {error && <p className="text-sm text-destructive">{error}</p>}
-
               <Button className="w-full" disabled={!canSubmit || submitting} onClick={submit}>
                 {submitting && <Loader2 className="size-4 animate-spin" />} Crear turno
               </Button>
@@ -190,43 +182,5 @@ export function NewAppointmentDialog({
         </div>
       )}
     </>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
-  );
-}
-
-function Select({
-  value,
-  onChange,
-  options,
-  placeholder,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  placeholder: string;
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="flex h-11 w-full rounded-xl border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-    >
-      <option value="" disabled>
-        {placeholder}
-      </option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
   );
 }
