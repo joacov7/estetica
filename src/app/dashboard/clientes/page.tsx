@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Phone, Mail } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { and, asc, eq, ne } from "drizzle-orm";
@@ -68,8 +69,12 @@ export default async function ClientesPage() {
               {list.map((c) => {
                 const s = stats.get(c.id);
                 return (
-                  <tr key={c.id} className="border-b border-border last:border-0">
-                    <td className="p-4 font-medium">{c.name}</td>
+                  <tr key={c.id} className="border-b border-border last:border-0 hover:bg-muted/40">
+                    <td className="p-4 font-medium">
+                      <Link href={`/dashboard/clientes/${c.id}`} className="hover:text-primary hover:underline">
+                        {c.name}
+                      </Link>
+                    </td>
                     <td className="p-4 text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Phone className="size-3.5" /> {c.phone}
