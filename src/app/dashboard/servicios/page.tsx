@@ -6,6 +6,7 @@ import { formatMoney } from "@/lib/money";
 import { Badge } from "@/components/ui/badge";
 import { ServiceForm } from "@/features/services/service-form";
 import { ServiceToggle } from "@/features/services/service-toggle";
+import { EditServiceDialog } from "@/features/services/edit-service-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,7 @@ export default async function ServiciosPage() {
               <span className="font-display font-semibold text-primary">
                 {formatMoney(s.priceCents, currency)}
               </span>
+              <EditServiceDialog service={s} />
               <ServiceToggle id={s.id} isActive={s.isActive} />
             </div>
           </div>

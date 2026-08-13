@@ -5,6 +5,7 @@ import { getCurrentOrg } from "@/features/org/current";
 import { Badge } from "@/components/ui/badge";
 import { ProfessionalForm } from "@/features/professionals/professional-form";
 import { ProfessionalToggle } from "@/features/professionals/professional-toggle";
+import { EditProfessionalDialog } from "@/features/professionals/edit-professional-dialog";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,10 @@ export default async function ProfesionalesPage() {
                 )}
               </div>
             </div>
-            <ProfessionalToggle id={p.id} isActive={p.isActive} />
+            <div className="flex items-center gap-4">
+              <EditProfessionalDialog professional={{ id: p.id, name: p.name, specialties: p.specialties }} />
+              <ProfessionalToggle id={p.id} isActive={p.isActive} />
+            </div>
           </div>
         ))}
         {list.length === 0 && (

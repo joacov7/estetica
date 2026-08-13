@@ -443,3 +443,4 @@ export type User = typeof users.$inferSelect;
 
 export type AppointmentStatus = (typeof appointmentStatus.enumValues)[number];
 export type MemberRole = (typeof memberRole.enumValues)[number];
+export type DepositType = (typeof depositType.enumValues)[number];

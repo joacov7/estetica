@@ -9,6 +9,14 @@ import { serviceFormSchema, type ServiceFormInput } from "@/lib/validations/serv
 
 const WRITE_ROLES = ["owner", "admin"];
 
+/** Fixed deposit is entered in major units (pesos) and stored as cents;
+ *  percentage is stored as-is (0..100). */
+function depositValueToStore(type: "none" | "fixed" | "percentage", value: number): number {
+  if (type === "fixed") return Math.round(value * 100);
+  if (type === "percentage") return value;
+  return 0;
+}
+
 export async function createService(input: ServiceFormInput) {
   const parsed = serviceFormSchema.safeParse(input);
   if (!parsed.success) {
@@ -29,9 +37,38 @@ export async function createService(input: ServiceFormInput) {
     durationMin: v.durationMin,
     bufferMin: v.bufferMin,
     depositType: v.depositType,
-    depositValue: v.depositValue,
+    depositValue: depositValueToStore(v.depositType, v.depositValue),
     isActive: v.isActive,
   });
+
+  revalidatePath("/dashboard/servicios");
+  return { ok: true as const };
+}
+
+export async function updateService(id: string, input: ServiceFormInput) {
+  const parsed = serviceFormSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) {
+    return { ok: false as const, error: "No autorizado" };
+  }
+  const v = parsed.data;
+  await db
+    .update(services)
+    .set({
+      categoryId: v.categoryId || null,
+      name: v.name,
+      description: v.description || null,
+      priceCents: Math.round(v.price * 100),
+      durationMin: v.durationMin,
+      bufferMin: v.bufferMin,
+      depositType: v.depositType,
+      depositValue: depositValueToStore(v.depositType, v.depositValue),
+      isActive: v.isActive,
+    })
+    .where(and(eq(services.id, id), eq(services.organizationId, org.id)));
 
   revalidatePath("/dashboard/servicios");
   return { ok: true as const };
