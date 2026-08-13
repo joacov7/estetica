@@ -4,9 +4,15 @@ import { db } from "@/db";
 import { organizations } from "@/db/schema";
 import { getAvailableSlots } from "@/services/availability";
 import { availabilityQuerySchema } from "@/lib/validations/booking";
+import { availabilityLimiter, clientIp } from "@/lib/rate-limit";
 
 /** POST /api/availability → free slots for a professional/service/date. */
 export async function POST(req: Request) {
+  const limited = await availabilityLimiter.check(`avail:${clientIp(req.headers)}`);
+  if (!limited.ok) {
+    return NextResponse.json({ error: "Demasiadas consultas. Probá en unos minutos." }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = availabilityQuerySchema.safeParse(body);
   if (!parsed.success) {

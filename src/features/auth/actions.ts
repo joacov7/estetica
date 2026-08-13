@@ -2,9 +2,11 @@
 
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { signIn } from "@/auth";
+import { loginLimiter, signupLimiter, clientIp } from "@/lib/rate-limit";
 import { db } from "@/db";
 import { users, organizations, organizationMembers, settings, businessHours } from "@/db/schema";
 import { reservedSlugs } from "@/db/schema";
@@ -14,6 +16,10 @@ import { signupSchema, slugify, type SignupInput } from "@/lib/validations/auth"
  *  Uses redirect:false + a relative redirect so it never depends on AUTH_URL
  *  (works on any Vercel domain / preview). */
 export async function login(_prev: string | undefined, formData: FormData): Promise<string | undefined> {
+  const ip = clientIp(await headers());
+  const limited = await loginLimiter.check(`login:${ip}`);
+  if (!limited.ok) return "Demasiados intentos. Esperá unos minutos.";
+
   try {
     await signIn("credentials", {
       email: formData.get("email"),
@@ -48,6 +54,10 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
+  const ip = clientIp(await headers());
+  const limited = await signupLimiter.check(`signup:${ip}`);
+  if (!limited.ok) return { ok: false, error: "Demasiados intentos. Esperá unos minutos." };
+
   const v = parsed.data;
 
   const [existing] = await db.select({ id: users.id }).from(users).where(eq(users.email, v.email)).limit(1);
