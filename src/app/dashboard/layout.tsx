@@ -13,7 +13,8 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
-import { signOut } from "@/auth";
+import { redirect } from "next/navigation";
+import { auth, signOut } from "@/auth";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -29,7 +30,11 @@ const NAV = [
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
 ];
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  // Gate the dashboard here (relative redirect → independent of AUTH_URL).
+  const session = await auth();
+  if (!session?.user) redirect("/login");
+
   return (
     <div className="flex min-h-screen">
       {/* Sidebar (desktop) */}
@@ -57,7 +62,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <form
             action={async () => {
               "use server";
-              await signOut({ redirectTo: "/login" });
+              await signOut({ redirect: false });
+              redirect("/login");
             }}
           >
             <button

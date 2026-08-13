@@ -11,11 +11,6 @@ export const authConfig = {
   session: { strategy: "jwt" },
   providers: [],
   callbacks: {
-    authorized({ auth, request }) {
-      const isDashboard = request.nextUrl.pathname.startsWith("/dashboard");
-      if (isDashboard) return !!auth?.user;
-      return true;
-    },
     jwt({ token, user }) {
       if (user) token.uid = user.id;
       return token;

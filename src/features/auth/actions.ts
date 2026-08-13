@@ -1,6 +1,7 @@
 "use server";
 
 import { AuthError } from "next-auth";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { signIn } from "@/auth";
@@ -9,18 +10,21 @@ import { users, organizations, organizationMembers, settings, businessHours } fr
 import { reservedSlugs } from "@/db/schema";
 import { signupSchema, slugify, type SignupInput } from "@/lib/validations/auth";
 
-/** Login form action (useActionState). Returns an error string or redirects. */
+/** Login form action (useActionState). Returns an error string or redirects.
+ *  Uses redirect:false + a relative redirect so it never depends on AUTH_URL
+ *  (works on any Vercel domain / preview). */
 export async function login(_prev: string | undefined, formData: FormData): Promise<string | undefined> {
   try {
     await signIn("credentials", {
       email: formData.get("email"),
       password: formData.get("password"),
-      redirectTo: "/dashboard",
+      redirect: false,
     });
   } catch (error) {
     if (error instanceof AuthError) return "Email o contraseña incorrectos.";
-    throw error; // re-throw redirect
+    throw error;
   }
+  redirect("/dashboard"); // relative → stays on the current host
 }
 
 /** Find a free slug derived from the business name. */
@@ -82,7 +86,11 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
     );
   });
 
-  // Throws a redirect to /dashboard on success.
-  await signIn("credentials", { email: v.email, password: v.password, redirectTo: "/dashboard" });
-  return { ok: false, error: "" }; // unreachable (signIn redirects)
+  try {
+    await signIn("credentials", { email: v.email, password: v.password, redirect: false });
+  } catch (error) {
+    if (error instanceof AuthError) return { ok: false, error: "No pudimos iniciar sesión." };
+    throw error;
+  }
+  redirect("/dashboard"); // relative → stays on the current host
 }
