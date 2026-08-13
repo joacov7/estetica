@@ -440,3 +440,6 @@ export type Client = typeof clients.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
 export type BusinessHour = typeof businessHours.$inferSelect;
 export type User = typeof users.$inferSelect;
+
+export type AppointmentStatus = (typeof appointmentStatus.enumValues)[number];
+export type MemberRole = (typeof memberRole.enumValues)[number];
