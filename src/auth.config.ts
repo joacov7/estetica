@@ -5,6 +5,8 @@ import type { NextAuthConfig } from "next-auth";
  * and the full server config. Providers are added in auth.ts.
  */
 export const authConfig = {
+  // Trust the deployment host (Vercel/proxy) so auth works behind their proxy.
+  trustHost: true,
   pages: { signIn: "/login" },
   session: { strategy: "jwt" },
   providers: [],
