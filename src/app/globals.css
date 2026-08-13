@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Beauty-brand palette — warm ivory background, powder rose primary,
+       champagne/gold accent. HSL channels so Tailwind can add opacity. */
+    --background: 40 43% 97%; /* ivory / warm white */
+    --foreground: 240 6% 15%; /* near-black warm grey */
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 6% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 6% 15%;
+
+    --primary: 344 40% 72%; /* powder rose */
+    --primary-foreground: 344 45% 20%;
+
+    --secondary: 344 55% 94%; /* soft rose */
+    --secondary-foreground: 344 30% 30%;
+
+    --muted: 40 20% 94%;
+    --muted-foreground: 240 4% 46%;
+
+    --accent: 344 55% 94%;
+    --accent-foreground: 344 30% 30%;
+
+    --gold: 40 55% 68%; /* champagne / subtle gold */
+    --gold-foreground: 40 45% 20%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 20% 88%;
+    --input: 40 20% 88%;
+    --ring: 344 40% 72%;
+
+    --radius: 1rem;
+
+    /* Font stacks. Swap for next/font (e.g. Inter + Playfair Display) later
+       without touching components — they read these variables. */
+    --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+      "Helvetica Neue", Arial, sans-serif;
+    --font-display: "Playfair Display", Georgia, "Times New Roman", serif;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
