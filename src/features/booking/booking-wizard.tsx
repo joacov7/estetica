@@ -170,7 +170,10 @@ export function BookingWizard({
           <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "gold" })}>
             <MessageCircle className="size-4" /> Compartir por WhatsApp
           </a>
-          <Link href={`/${org.slug}`} className={buttonVariants({ variant: "outline" })}>Volver al inicio</Link>
+          <Link href={`/gestionar/${result.manageToken}`} className={buttonVariants({ variant: "outline" })}>
+            Cancelar o reprogramar
+          </Link>
+          <Link href={`/${org.slug}`} className={buttonVariants({ variant: "ghost" })}>Volver al inicio</Link>
         </div>
       </div>
     );

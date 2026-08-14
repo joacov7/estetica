@@ -1,6 +1,6 @@
 import "server-only";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
-import { and, eq, gt, inArray, lt } from "drizzle-orm";
+import { and, eq, gt, inArray, lt, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { services, businessHours, appointments, blockedTimes } from "@/db/schema";
 import { getOrgSettings } from "@/lib/settings";
@@ -25,6 +25,8 @@ export interface AvailabilityParams {
   timezone: string;
   step?: number;
   leadMinutes?: number;
+  /** Ignore this appointment when checking conflicts (used when rescheduling). */
+  excludeAppointmentId?: string;
 }
 
 function localMidnightUtc(date: string, timezone: string): Date {
@@ -90,6 +92,7 @@ export async function getAvailableSlots(
           inArray(appointments.status, [...ACTIVE_STATUSES]),
           lt(appointments.startAt, dayEndIso),
           gt(appointments.endAt, dayRefIso),
+          params.excludeAppointmentId ? ne(appointments.id, params.excludeAppointmentId) : undefined,
         ),
       ),
     db
