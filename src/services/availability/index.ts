@@ -3,6 +3,7 @@ import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import { and, eq, gt, inArray, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { services, businessHours, appointments, blockedTimes } from "@/db/schema";
+import { getOrgSettings } from "@/lib/settings";
 import { computeDaySlots, type Interval } from "./core";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -53,17 +54,13 @@ function timeToMinutes(t: string): number {
 export async function getAvailableSlots(
   params: AvailabilityParams,
 ): Promise<AvailableSlot[]> {
-  const {
-    organizationId,
-    professionalId,
-    date,
-    serviceIds,
-    timezone,
-    step = 30,
-    leadMinutes = 60,
-  } = params;
+  const { organizationId, professionalId, date, serviceIds, timezone, step = 30 } = params;
 
   if (serviceIds.length === 0) return [];
+
+  // Lead time is admin-configurable; fall back to the org setting when not given.
+  const leadMinutes =
+    params.leadMinutes ?? (await getOrgSettings(organizationId)).leadTimeMinutes;
 
   const dayRef = localMidnightUtc(date, timezone);
   const dayEnd = new Date(dayRef.getTime() + DAY_MS);

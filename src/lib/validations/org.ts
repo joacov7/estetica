@@ -31,3 +31,11 @@ export const businessHoursSchema = z.object({
 });
 
 export type BusinessHoursInput = z.infer<typeof businessHoursSchema>;
+
+export const bookingSettingsSchema = z.object({
+  advanceDays: z.coerce.number().int().min(1, "Mínimo 1 día").max(120),
+  leadTimeMinutes: z.coerce.number().int().min(0).max(1440),
+  cancellationWindowHours: z.coerce.number().int().min(0).max(168),
+});
+
+export type BookingSettingsInput = z.infer<typeof bookingSettingsSchema>;

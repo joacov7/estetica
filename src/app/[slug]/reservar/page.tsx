@@ -4,6 +4,7 @@ import { ChevronLeft } from "lucide-react";
 import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { organizations, services, professionals, professionalServices } from "@/db/schema";
+import { getOrgSettings } from "@/lib/settings";
 import { BookingWizard } from "@/features/booking/booking-wizard";
 
 export const dynamic = "force-dynamic";
@@ -53,6 +54,8 @@ export default async function ReservarPage({
     db.select().from(professionalServices),
   ]);
 
+  const orgSettings = await getOrgSettings(org.id);
+
   return (
     <main className="mx-auto min-h-screen max-w-lg px-4 py-6">
       <Link
@@ -61,7 +64,15 @@ export default async function ReservarPage({
       >
         <ChevronLeft className="size-4" /> {org.name}
       </Link>
-      <BookingWizard org={org} services={svc} professionals={pros} profServices={profSvc} initialRef={ref ?? ""} />
+      <BookingWizard
+        org={org}
+        services={svc}
+        professionals={pros}
+        profServices={profSvc}
+        initialRef={ref ?? ""}
+        advanceDays={orgSettings.advanceDays}
+        cancellationWindowHours={orgSettings.cancellationWindowHours}
+      />
     </main>
   );
 }

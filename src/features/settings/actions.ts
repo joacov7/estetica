@@ -3,13 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { db } from "@/db";
-import { organizations, reservedSlugs, businessHours } from "@/db/schema";
+import { organizations, reservedSlugs, businessHours, settings } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
+import { getOrgSettings } from "@/lib/settings";
 import {
   orgProfileSchema,
   businessHoursSchema,
+  bookingSettingsSchema,
   type OrgProfileInput,
   type BusinessHoursInput,
+  type BookingSettingsInput,
 } from "@/lib/validations/org";
 
 const WRITE_ROLES = ["owner", "admin"];
@@ -53,6 +56,28 @@ export async function updateOrgProfile(input: OrgProfileInput) {
 
   revalidatePath("/dashboard/configuracion");
   revalidatePath(`/${v.slug}`);
+  return { ok: true as const };
+}
+
+export async function updateBookingSettings(input: BookingSettingsInput) {
+  const parsed = bookingSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) {
+    return { ok: false as const, error: "No autorizado" };
+  }
+
+  // Merge into existing settings.data so other keys are preserved.
+  const current = await getOrgSettings(org.id);
+  const data = { ...current, ...parsed.data };
+  await db
+    .insert(settings)
+    .values({ organizationId: org.id, data })
+    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
+
+  revalidatePath("/dashboard/configuracion");
   return { ok: true as const };
 }
 

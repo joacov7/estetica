@@ -47,12 +47,16 @@ export function BookingWizard({
   professionals,
   profServices,
   initialRef = "",
+  advanceDays = 21,
+  cancellationWindowHours = 24,
 }: {
   org: Org;
   services: Service[];
   professionals: Professional[];
   profServices: ProfService[];
   initialRef?: string;
+  advanceDays?: number;
+  cancellationWindowHours?: number;
 }) {
   const [step, setStep] = useState(0);
   const [serviceIds, setServiceIds] = useState<string[]>([]);
@@ -91,7 +95,7 @@ export function BookingWizard({
   }
 
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: org.timezone }).format(new Date());
-  const days = Array.from({ length: 14 }, (_, i) => addDays(today, i));
+  const days = Array.from({ length: Math.max(1, advanceDays) }, (_, i) => addDays(today, i));
 
   async function loadSlots(d: string) {
     if (serviceIds.length === 0) return;
@@ -291,6 +295,11 @@ export function BookingWizard({
             <Row label="Precio" value={formatMoney(totalPrice, currency)} />
             {totalDeposit > 0 && <Row label="Seña requerida" value={formatMoney(totalDeposit, currency)} />}
           </div>
+          {cancellationWindowHours > 0 && (
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Podés cancelar sin cargo hasta {cancellationWindowHours} h antes del turno.
+            </p>
+          )}
           {TURNSTILE_SITE_KEY && (
             <div className="mt-4">
               <Turnstile siteKey={TURNSTILE_SITE_KEY} onToken={setCaptchaToken} />
