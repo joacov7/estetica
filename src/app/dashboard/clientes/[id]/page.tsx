@@ -4,12 +4,13 @@ import { ChevronLeft, Phone, Mail, Cake } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { clients, appointments, appointmentServices, clientNotes } from "@/db/schema";
+import { clients, appointments, appointmentServices, clientNotes, servicePacks, clientPacks } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { NoteForm } from "@/features/clients/note-form";
 import { ReferralLink } from "@/features/referrals/referral-link";
+import { ClientPacks } from "@/features/loyalty/client-packs";
 import type { AppointmentStatus } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,18 @@ export default async function ClientDetailPage({
     const [r] = await db.select({ name: clients.name }).from(clients).where(eq(clients.id, client.referredById)).limit(1);
     referrerName = r?.name ?? null;
   }
+
+  const [myPacks, packTemplates] = await Promise.all([
+    db
+      .select({ id: clientPacks.id, name: clientPacks.name, remainingQty: clientPacks.remainingQty, totalQty: clientPacks.totalQty })
+      .from(clientPacks)
+      .where(and(eq(clientPacks.clientId, id), eq(clientPacks.organizationId, org.id)))
+      .orderBy(desc(clientPacks.createdAt)),
+    db
+      .select({ id: servicePacks.id, name: servicePacks.name, quantity: servicePacks.quantity })
+      .from(servicePacks)
+      .where(and(eq(servicePacks.organizationId, org.id), eq(servicePacks.isActive, true))),
+  ]);
 
   const [appts, notes] = await Promise.all([
     db
@@ -173,6 +186,11 @@ export default async function ClientDetailPage({
                 </>
               )}
             </div>
+          </div>
+
+          <div>
+            <h2 className="mb-3 font-display text-lg font-semibold">Packs</h2>
+            <ClientPacks clientId={client.id} templates={packTemplates} packs={myPacks} />
           </div>
 
           <h2 className="mb-3 font-display text-lg font-semibold">Notas</h2>

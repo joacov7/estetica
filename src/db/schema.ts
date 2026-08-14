@@ -382,6 +382,59 @@ export const commissions = pgTable("commissions", {
   createdAt: ts(),
 });
 
+// --- loyalty: gift cards & packs --------------------------------------------
+export const giftCards = pgTable(
+  "gift_cards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    code: text("code").notNull(),
+    initialCents: integer("initial_cents").notNull(),
+    balanceCents: integer("balance_cents").notNull(),
+    note: text("note"),
+    status: text("status").notNull().default("active"), // active | redeemed | void
+    createdAt: ts(),
+  },
+  (t) => [unique("gift_cards_org_code_unique").on(t.organizationId, t.code)],
+);
+
+/** Pack template (e.g. "Pack x4 Kapping"). */
+export const servicePacks = pgTable("service_packs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  serviceId: uuid("service_id").references(() => services.id, { onDelete: "set null" }),
+  quantity: integer("quantity").notNull(),
+  priceCents: integer("price_cents").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: ts(),
+});
+
+/** A pack purchased by a client; remaining decrements on each use. */
+export const clientPacks = pgTable(
+  "client_packs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    serviceId: uuid("service_id").references(() => services.id, { onDelete: "set null" }),
+    totalQty: integer("total_qty").notNull(),
+    remainingQty: integer("remaining_qty").notNull(),
+    priceCents: integer("price_cents").notNull().default(0),
+    createdAt: ts(),
+  },
+  (t) => [index("client_packs_org_client_idx").on(t.organizationId, t.clientId)],
+);
+
 // --- growth (schema-ready) --------------------------------------------------
 export const promotions = pgTable(
   "promotions",

@@ -15,6 +15,8 @@ import {
   BarChart3,
   Bell,
   Gift,
+  CreditCard,
+  Package,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
@@ -31,6 +33,8 @@ const NAV = [
   { href: "/dashboard/caja", label: "Caja", icon: Wallet },
   { href: "/dashboard/comisiones", label: "Comisiones", icon: Percent },
   { href: "/dashboard/promociones", label: "Promociones", icon: Tag },
+  { href: "/dashboard/gift-cards", label: "Gift cards", icon: CreditCard },
+  { href: "/dashboard/packs", label: "Packs", icon: Package },
   { href: "/dashboard/lista-espera", label: "Lista de espera", icon: ListChecks },
   { href: "/dashboard/galeria", label: "Galería", icon: Images },
   { href: "/dashboard/configuracion", label: "Configuración", icon: Settings },
