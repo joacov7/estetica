@@ -10,9 +10,11 @@ import {
   orgProfileSchema,
   businessHoursSchema,
   bookingSettingsSchema,
+  reminderSettingsSchema,
   type OrgProfileInput,
   type BusinessHoursInput,
   type BookingSettingsInput,
+  type ReminderSettingsInput,
 } from "@/lib/validations/org";
 
 const WRITE_ROLES = ["owner", "admin"];
@@ -70,6 +72,26 @@ export async function updateBookingSettings(input: BookingSettingsInput) {
   }
 
   // Merge into existing settings.data so other keys are preserved.
+  const current = await getOrgSettings(org.id);
+  const data = { ...current, ...parsed.data };
+  await db
+    .insert(settings)
+    .values({ organizationId: org.id, data })
+    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
+
+  revalidatePath("/dashboard/configuracion");
+  return { ok: true as const };
+}
+
+export async function updateReminderSettings(input: ReminderSettingsInput) {
+  const parsed = reminderSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) {
+    return { ok: false as const, error: "No autorizado" };
+  }
   const current = await getOrgSettings(org.id);
   const data = { ...current, ...parsed.data };
   await db

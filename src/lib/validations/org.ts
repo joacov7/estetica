@@ -39,3 +39,10 @@ export const bookingSettingsSchema = z.object({
 });
 
 export type BookingSettingsInput = z.infer<typeof bookingSettingsSchema>;
+
+export const reminderSettingsSchema = z.object({
+  emailReminderEnabled: z.boolean(),
+  reminderHoursAhead: z.coerce.number().int().min(1, "Mínimo 1 hora").max(48),
+});
+
+export type ReminderSettingsInput = z.infer<typeof reminderSettingsSchema>;

@@ -14,12 +14,18 @@ export interface OrgSettings {
   leadTimeMinutes: number;
   /** Client can cancel/reschedule for free up to this many hours before. */
   cancellationWindowHours: number;
+  /** Send an automatic email reminder before the appointment. */
+  emailReminderEnabled: boolean;
+  /** How many hours before the appointment the reminder is sent. */
+  reminderHoursAhead: number;
 }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
   advanceDays: 21,
   leadTimeMinutes: 60,
   cancellationWindowHours: 24,
+  emailReminderEnabled: true,
+  reminderHoursAhead: 24,
 };
 
 export async function getOrgSettings(organizationId: string): Promise<OrgSettings> {

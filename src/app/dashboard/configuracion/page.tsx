@@ -6,6 +6,7 @@ import { getOrgSettings } from "@/lib/settings";
 import { OrgProfileForm } from "@/features/settings/org-profile-form";
 import { HoursEditor, type HourRow } from "@/features/settings/hours-editor";
 import { BookingSettingsForm } from "@/features/settings/booking-settings-form";
+import { ReminderSettingsForm } from "@/features/settings/reminder-settings-form";
 import { PublicLink } from "@/features/settings/public-link";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +40,7 @@ export default async function ConfiguracionPage() {
       <PublicLink slug={org.slug} />
       <OrgProfileForm org={org} />
       <BookingSettingsForm initial={bookingSettings} />
+      <ReminderSettingsForm initial={bookingSettings} />
       <HoursEditor initial={hours} />
     </div>
   );
