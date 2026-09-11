@@ -11,10 +11,12 @@ import {
   businessHoursSchema,
   bookingSettingsSchema,
   reminderSettingsSchema,
+  costSettingsSchema,
   type OrgProfileInput,
   type BusinessHoursInput,
   type BookingSettingsInput,
   type ReminderSettingsInput,
+  type CostSettingsInput,
 } from "@/lib/validations/org";
 
 const WRITE_ROLES = ["owner", "admin"];
@@ -100,6 +102,31 @@ export async function updateReminderSettings(input: ReminderSettingsInput) {
     .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
 
   revalidatePath("/dashboard/configuracion");
+  return { ok: true as const };
+}
+
+export async function updateCostSettings(input: CostSettingsInput) {
+  const parsed = costSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) {
+    return { ok: false as const, error: "No autorizado" };
+  }
+  const current = await getOrgSettings(org.id);
+  const data = {
+    ...current,
+    insumosPct: parsed.data.insumosPct,
+    monthlyFixedCents: Math.round(parsed.data.monthlyFixed * 100),
+  };
+  await db
+    .insert(settings)
+    .values({ organizationId: org.id, data })
+    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
+
+  revalidatePath("/dashboard/configuracion");
+  revalidatePath("/dashboard/analytics");
   return { ok: true as const };
 }
 

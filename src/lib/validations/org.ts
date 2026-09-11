@@ -46,3 +46,10 @@ export const reminderSettingsSchema = z.object({
 });
 
 export type ReminderSettingsInput = z.infer<typeof reminderSettingsSchema>;
+
+export const costSettingsSchema = z.object({
+  insumosPct: z.coerce.number().min(0).max(100),
+  monthlyFixed: z.coerce.number().min(0), // pesos → cents on save
+});
+
+export type CostSettingsInput = z.infer<typeof costSettingsSchema>;

@@ -3,8 +3,9 @@ import { DollarSign, CalendarCheck, Receipt, XCircle, UserX, UserPlus } from "lu
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "@/db";
-import { appointments, appointmentServices, clients, professionals } from "@/db/schema";
+import { appointments, appointmentServices, clients, professionals, professionalPay } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
+import { getOrgSettings } from "@/lib/settings";
 import { StatCard } from "@/components/ui/stat-card";
 import { buttonVariants } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
@@ -42,12 +43,14 @@ export default async function AnalyticsPage({
   const startIso = fromZonedTime(`${rangeStart(period, today)}T00:00:00`, org.timezone).toISOString();
   const endIso = new Date(fromZonedTime(`${today}T00:00:00`, org.timezone).getTime() + 24 * 60 * 60 * 1000).toISOString();
 
-  const [appts, pros] = await Promise.all([
+  const [appts, pros, pay, orgSettings] = await Promise.all([
     db
       .select({ id: appointments.id, professionalId: appointments.professionalId, status: appointments.status })
       .from(appointments)
       .where(and(eq(appointments.organizationId, org.id), gte(appointments.startAt, startIso), lt(appointments.startAt, endIso))),
     db.select({ id: professionals.id, name: professionals.name }).from(professionals).where(eq(professionals.organizationId, org.id)),
+    db.select().from(professionalPay).where(eq(professionalPay.organizationId, org.id)),
+    getOrgSettings(org.id),
   ]);
 
   const attended = appts.filter((a) => a.status === "atendido");
@@ -87,6 +90,26 @@ export default async function AnalyticsPage({
   const proRevenue = [...revByPro.entries()].map(([id, cents]) => ({ name: proName.get(id) ?? "—", cents })).sort((a, b) => b.cents - a.cents);
   const maxPro = proRevenue[0]?.cents ?? 1;
 
+  // --- Estado de resultados (ingresos y comisiones reales; costos configurados) ---
+  const countByPro = new Map<string, number>();
+  for (const a of attended) countByPro.set(a.professionalId, (countByPro.get(a.professionalId) ?? 0) + 1);
+  const payByPro = new Map(pay.map((p) => [p.professionalId, p]));
+  let commissions = 0;
+  for (const [proId, rev] of revByPro) {
+    const cfg = payByPro.get(proId);
+    if (!cfg) continue;
+    commissions +=
+      cfg.commissionType === "percentage"
+        ? Math.round((rev * cfg.commissionValue) / 100)
+        : Math.round(cfg.commissionValue) * (countByPro.get(proId) ?? 0);
+  }
+  const periodDays = period === "day" ? 1 : period === "week" ? 7 : Number(today.slice(8, 10));
+  const insumos = Math.round((revenue * orgSettings.insumosPct) / 100);
+  const fixedCost = Math.round((orgSettings.monthlyFixedCents * periodDays) / 30);
+  const resultado = revenue - commissions - insumos - fixedCost;
+  const margen = revenue > 0 ? Math.round((resultado / revenue) * 100) : 0;
+  const costsConfigured = orgSettings.insumosPct > 0 || orgSettings.monthlyFixedCents > 0;
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -124,6 +147,43 @@ export default async function AnalyticsPage({
           ))}
         </RankCard>
       </div>
+
+      {/* Estado de resultados */}
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="mb-4 flex items-baseline justify-between gap-3">
+          <h2 className="font-display text-lg font-semibold">Estado de resultados</h2>
+          <span className="text-xs text-muted-foreground">del período</span>
+        </div>
+        <dl className="space-y-1 text-sm">
+          <PLRow label="Ingresos (turnos atendidos)" value={formatMoney(revenue, currency)} />
+          <PLRow label="Comisiones" value={`− ${formatMoney(commissions, currency)}`} muted />
+          <PLRow label={`Insumos (${orgSettings.insumosPct}%)`} value={`− ${formatMoney(insumos, currency)}`} muted />
+          <PLRow label="Costos fijos (prorrateados)" value={`− ${formatMoney(fixedCost, currency)}`} muted />
+          <div className="my-2 border-t border-border" />
+          <div className="flex items-center justify-between">
+            <dt className="font-medium">Resultado estimado</dt>
+            <dd className={`font-display text-xl font-semibold ${resultado >= 0 ? "text-primary" : "text-destructive"}`}>
+              {formatMoney(resultado, currency)}
+              <span className="ml-2 text-sm font-medium text-muted-foreground">{margen}%</span>
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Ingresos y comisiones son reales (turnos atendidos). Insumos y costos fijos salen de lo que
+          configures en{" "}
+          <Link href="/dashboard/configuracion" className="text-primary hover:underline">Configuración → Costos</Link>.
+          {!costsConfigured && " Cargá tus costos para ver el resultado neto completo."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function PLRow({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+  return (
+    <div className="flex items-center justify-between py-0.5">
+      <dt className={muted ? "text-muted-foreground" : ""}>{label}</dt>
+      <dd className="font-medium tabular-nums">{value}</dd>
     </div>
   );
 }

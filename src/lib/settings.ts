@@ -18,6 +18,10 @@ export interface OrgSettings {
   emailReminderEnabled: boolean;
   /** How many hours before the appointment the reminder is sent. */
   reminderHoursAhead: number;
+  /** Supplies cost as a % of revenue (for the income statement). */
+  insumosPct: number;
+  /** Fixed monthly costs (rent, monotributo, services…) in cents. */
+  monthlyFixedCents: number;
 }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
@@ -26,6 +30,8 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   cancellationWindowHours: 24,
   emailReminderEnabled: true,
   reminderHoursAhead: 24,
+  insumosPct: 0,
+  monthlyFixedCents: 0,
 };
 
 export async function getOrgSettings(organizationId: string): Promise<OrgSettings> {
