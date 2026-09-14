@@ -30,7 +30,12 @@ export default function LoginPage() {
             {pending && <Loader2 className="size-4 animate-spin" />} Entrar
           </Button>
         </form>
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-4 text-center text-sm">
+          <Link href="/olvide" className="text-muted-foreground hover:text-foreground">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </p>
+        <p className="mt-3 text-center text-sm text-muted-foreground">
           ¿No tenés cuenta?{" "}
           <Link href="/signup" className="font-medium text-primary hover:underline">
             Crear negocio

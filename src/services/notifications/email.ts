@@ -54,3 +54,17 @@ export function reminderEmailHtml(opts: {
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
+
+/** Password reset email. */
+export function resetEmailHtml(opts: { name: string | null; url: string }): string {
+  const { name, url } = opts;
+  return `
+  <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#1f1f23">
+    <h2 style="font-weight:600">Restablecer tu contraseña</h2>
+    <p>Hola${name ? " " + escapeHtml(name) : ""}, recibimos un pedido para cambiar tu contraseña.</p>
+    <p style="margin:20px 0">
+      <a href="${url}" style="background:#a24e6b;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600;display:inline-block">Elegir una nueva contraseña</a>
+    </p>
+    <p style="color:#6b6b70;font-size:13px">El enlace vence en 1 hora. Si no fuiste vos, ignorá este mensaje: tu contraseña no cambia hasta que uses el enlace.</p>
+  </div>`;
+}

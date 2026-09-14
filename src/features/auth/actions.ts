@@ -11,6 +11,8 @@ import { db } from "@/db";
 import { users, organizations, organizationMembers, settings, businessHours } from "@/db/schema";
 import { reservedSlugs } from "@/db/schema";
 import { signupSchema, slugify, type SignupInput } from "@/lib/validations/auth";
+import { createResetToken, parseResetToken, verifyResetToken } from "@/lib/reset-token";
+import { emailConfigured, sendEmail, resetEmailHtml } from "@/services/notifications/email";
 
 /** Login form action (useActionState). Returns an error string or redirects.
  *  Uses redirect:false + a relative redirect so it never depends on AUTH_URL
@@ -31,6 +33,49 @@ export async function login(_prev: string | undefined, formData: FormData): Prom
     throw error;
   }
   redirect("/dashboard"); // relative → stays on the current host
+}
+
+/** Request a reset link. Always reports success (no email enumeration). */
+export async function requestPasswordReset(
+  email: string,
+): Promise<{ sent: true; emailConfigured: boolean }> {
+  const ip = clientIp(await headers());
+  const limited = await loginLimiter.check(`reset:${ip}`);
+  const e = String(email || "").toLowerCase().trim();
+
+  if (limited.ok && e) {
+    const [user] = await db.select().from(users).where(eq(users.email, e)).limit(1);
+    if (user) {
+      const token = createResetToken(user.id, user.passwordHash);
+      const site = process.env.NEXT_PUBLIC_SITE_URL || "";
+      const url = `${site}/restablecer/${token}`;
+      await sendEmail({
+        to: user.email,
+        subject: "Restablecer tu contraseña",
+        html: resetEmailHtml({ name: user.name, url }),
+      });
+    }
+  }
+  return { sent: true, emailConfigured };
+}
+
+/** Complete the reset with a token + new password. */
+export async function resetPassword(
+  token: string,
+  password: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (String(password).length < 8) return { ok: false, error: "Mínimo 8 caracteres" };
+  const parsed = parseResetToken(token);
+  if (!parsed) return { ok: false, error: "Enlace inválido o vencido." };
+
+  const [user] = await db.select().from(users).where(eq(users.id, parsed.userId)).limit(1);
+  if (!user || !verifyResetToken(parsed, user.passwordHash)) {
+    return { ok: false, error: "Enlace inválido o vencido." };
+  }
+
+  const passwordHash = await bcrypt.hash(String(password), 10);
+  await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+  return { ok: true };
 }
 
 /** Find a free slug derived from the business name. */
