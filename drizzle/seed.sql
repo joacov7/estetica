@@ -3,10 +3,10 @@
 -- Pegá y ejecutá este archivo en el SQL Editor de Neon (o cualquier cliente
 -- Postgres) DESPUÉS de que las migraciones ya crearon las tablas.
 --
--- Crea el negocio "Buenas Uñas" con un usuario demo, profesionales, servicios
+-- Crea el negocio "By Mery" con un usuario demo, profesionales, servicios
 -- y horarios. Idempotente: si el negocio ya existe, no hace nada.
 --
---   Login del panel:  demo@buenas-unas.test  /  password123
+--   Login del panel:  demo@by-mery.test  /  password123
 -- ============================================================================
 do $$
 declare
@@ -20,21 +20,21 @@ declare
   wd int;
 begin
   -- No duplicar si ya existe.
-  if exists (select 1 from organizations where slug = 'buenas-unas') then
-    raise notice 'Seed omitido: "buenas-unas" ya existe.';
+  if exists (select 1 from organizations where slug = 'by-mery') then
+    raise notice 'Seed omitido: "by-mery" ya existe.';
     return;
   end if;
 
   -- Usuario demo (contraseña: password123)
   insert into users (email, name, password_hash)
-  values ('demo@buenas-unas.test', 'Demo',
+  values ('demo@by-mery.test', 'Demo',
           '$2b$10$BWUcyu/HHwxFY6j3ee8gwupvIFbQ.fu07kogV4DIDv3Eb24XZOGt2')
   returning id into v_user;
 
   insert into organizations (slug, name, description, address, instagram, whatsapp)
-  values ('buenas-unas', 'Buenas Uñas',
-          'Estudio de manicura y estética. Diseños personalizados y atención premium.',
-          'Av. Siempre Viva 123, Buenos Aires', '@buenas.unas', '5491100000000')
+  values ('by-mery', 'By Mery',
+          'Estudio de estética exprés — uñas, pestañas y cejas. Gualeguay.',
+          'Gualeguay, Entre Ríos', '@by.mery', '5493444000000')
   returning id into v_org;
 
   insert into organization_members (organization_id, user_id, role)
@@ -50,7 +50,7 @@ begin
   values (v_org, 'Cejas', 3) returning id into v_cejas;
 
   insert into professionals (organization_id, name, specialties, sort_order)
-  values (v_org, 'María', array['Soft Gel','Nail Art'], 1) returning id into v_maria;
+  values (v_org, 'Mery', array['Soft Gel','Nail Art'], 1) returning id into v_maria;
   insert into professionals (organization_id, name, specialties, sort_order)
   values (v_org, 'Sofía', array['Kapping','Semipermanente'], 2) returning id into v_sofia;
 
@@ -73,5 +73,5 @@ begin
     values (v_org, null, wd, '10:00', '19:00');
   end loop;
 
-  raise notice 'Seed OK: negocio "Buenas Uñas" creado.';
+  raise notice 'Seed OK: negocio "By Mery" creado.';
 end $$;

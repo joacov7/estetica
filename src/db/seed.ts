@@ -11,7 +11,7 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import * as schema from "./schema";
 
-const DEMO_EMAIL = "demo@buenas-unas.test";
+const DEMO_EMAIL = "demo@by-mery.test";
 const DEMO_PASSWORD = "password123";
 
 async function main() {
@@ -45,12 +45,12 @@ async function main() {
     const [org] = await tx
       .insert(schema.organizations)
       .values({
-        slug: "buenas-unas",
-        name: "Buenas Uñas",
-        description: "Estudio de manicura y estética. Diseños personalizados y atención premium.",
-        address: "Av. Siempre Viva 123, Buenos Aires",
-        instagram: "@buenas.unas",
-        whatsapp: "5491100000000",
+        slug: "by-mery",
+        name: "By Mery",
+        description: "Estudio de estética exprés — uñas, pestañas y cejas. Gualeguay.",
+        address: "Gualeguay, Entre Ríos",
+        instagram: "@by.mery",
+        whatsapp: "5493444000000",
       })
       .returning({ id: schema.organizations.id });
 
@@ -73,7 +73,7 @@ async function main() {
     const [maria, sofia] = await tx
       .insert(schema.professionals)
       .values([
-        { organizationId: org.id, name: "María", specialties: ["Soft Gel", "Nail Art"], sortOrder: 1 },
+        { organizationId: org.id, name: "Mery", specialties: ["Soft Gel", "Nail Art"], sortOrder: 1 },
         { organizationId: org.id, name: "Sofía", specialties: ["Kapping", "Semipermanente"], sortOrder: 2 },
       ])
       .returning({ id: schema.professionals.id });

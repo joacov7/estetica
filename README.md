@@ -19,7 +19,7 @@ estética. Reserva pública mobile-first + panel administrativo.
 3. Deploy. Las tablas se crean solas (migraciones on-build). Después, corregí
    `AUTH_URL` / `NEXT_PUBLIC_SITE_URL` con la URL final y hacé **Redeploy**.
 4. (Opcional) Cargá datos de ejemplo pegando `drizzle/seed.sql` en el SQL Editor
-   de Neon → login demo `demo@buenas-unas.test` / `password123`.
+   de Neon → login demo `demo@by-mery.test` / `password123`.
 
 ## Stack
 
@@ -73,14 +73,14 @@ cp .env.example .env.local
 
 # 3. Base de datos: aplicar migraciones + seed
 npm run db:migrate     # aplica drizzle/ (tablas + constraint anti-doble-reserva)
-npm run db:seed        # datos de ejemplo "Buenas Uñas"
+npm run db:seed        # datos de ejemplo "By Mery"
 
 # 4. App
 npm run dev            # http://localhost:3000
 ```
 
 El seed crea un usuario demo para entrar al panel:
-**`demo@buenas-unas.test` / `password123`**
+**`demo@by-mery.test` / `password123`**
 
 Scripts:
 
@@ -94,8 +94,8 @@ npm run db:generate    # genera migraciones desde el schema de Drizzle
 Rutas para probar:
 
 - `/` — landing · `/login` · `/signup`
-- `/buenas-unas` — página pública del negocio de ejemplo
-- `/buenas-unas/reservar` — flujo de reserva
+- `/by-mery` — página pública del negocio de ejemplo
+- `/by-mery/reservar` — flujo de reserva
 - `/dashboard` — panel (requiere login)
 
 ## Deploy en Vercel
