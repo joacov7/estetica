@@ -14,10 +14,10 @@ export default async function ReservarPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ ref?: string }>;
+  searchParams: Promise<{ ref?: string; servicio?: string }>;
 }) {
   const { slug } = await params;
-  const { ref } = await searchParams;
+  const { ref, servicio } = await searchParams;
 
   const [org] = await db
     .select({
@@ -55,6 +55,7 @@ export default async function ReservarPage({
   ]);
 
   const orgSettings = await getOrgSettings(org.id);
+  const preselected = servicio && svc.some((s) => s.id === servicio) ? [servicio] : [];
 
   return (
     <main className="mx-auto min-h-screen max-w-lg px-4 py-6">
@@ -70,6 +71,7 @@ export default async function ReservarPage({
         professionals={pros}
         profServices={profSvc}
         initialRef={ref ?? ""}
+        initialServiceIds={preselected}
         advanceDays={orgSettings.advanceDays}
         cancellationWindowHours={orgSettings.cancellationWindowHours}
       />

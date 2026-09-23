@@ -47,6 +47,7 @@ export function BookingWizard({
   professionals,
   profServices,
   initialRef = "",
+  initialServiceIds = [],
   advanceDays = 21,
   cancellationWindowHours = 24,
 }: {
@@ -55,11 +56,13 @@ export function BookingWizard({
   professionals: Professional[];
   profServices: ProfService[];
   initialRef?: string;
+  initialServiceIds?: string[];
   advanceDays?: number;
   cancellationWindowHours?: number;
 }) {
-  const [step, setStep] = useState(0);
-  const [serviceIds, setServiceIds] = useState<string[]>([]);
+  const validInitial = initialServiceIds.filter((id) => services.some((s) => s.id === id));
+  const [step, setStep] = useState(validInitial.length > 0 ? 1 : 0);
+  const [serviceIds, setServiceIds] = useState<string[]>(validInitial);
   const [proMode, setProMode] = useState<"any" | string>("any");
   const [date, setDate] = useState<string | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
