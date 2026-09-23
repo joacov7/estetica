@@ -9,6 +9,7 @@ import { BookingSettingsForm } from "@/features/settings/booking-settings-form";
 import { ReminderSettingsForm } from "@/features/settings/reminder-settings-form";
 import { CostSettingsForm } from "@/features/settings/cost-settings-form";
 import { PublicLink } from "@/features/settings/public-link";
+import { ImageUploader } from "@/features/media/image-uploader";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,19 @@ export default async function ConfiguracionPage() {
       </header>
 
       <PublicLink slug={org.slug} />
+
+      <div className="space-y-5 rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Imágenes</h2>
+          <p className="text-sm text-muted-foreground">Logo y foto de portada de tu página pública.</p>
+        </div>
+        <ImageUploader target="org-logo" currentUrl={org.logoUrl} shape="circle" label="Logo" />
+        <div>
+          <span className="mb-2 block text-sm font-medium">Portada</span>
+          <ImageUploader target="org-cover" currentUrl={org.coverUrl} shape="wide" />
+        </div>
+      </div>
+
       <OrgProfileForm org={org} />
       <BookingSettingsForm initial={bookingSettings} />
       <ReminderSettingsForm initial={bookingSettings} />

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ServiceForm } from "@/features/services/service-form";
 import { ServiceToggle } from "@/features/services/service-toggle";
 import { EditServiceDialog } from "@/features/services/edit-service-dialog";
+import { ImageUploader } from "@/features/media/image-uploader";
 
 export const dynamic = "force-dynamic";
 
@@ -33,17 +34,20 @@ export default async function ServiciosPage() {
 
       <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {list.map((s) => (
-          <div key={s.id} className="flex items-center justify-between p-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{s.name}</span>
-                {!s.isActive && <Badge variant="muted">Inactivo</Badge>}
+          <div key={s.id} className="flex items-center justify-between gap-4 p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <ImageUploader target="service" targetId={s.id} currentUrl={s.imageUrl} shape="square" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{s.name}</span>
+                  {!s.isActive && <Badge variant="muted">Inactivo</Badge>}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {s.durationMin} min{s.bufferMin > 0 && ` · +${s.bufferMin} min limpieza`}
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {s.durationMin} min{s.bufferMin > 0 && ` · +${s.bufferMin} min limpieza`}
-              </p>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex shrink-0 items-center gap-4">
               <span className="font-display font-semibold text-primary">
                 {formatMoney(s.priceCents, currency)}
               </span>
