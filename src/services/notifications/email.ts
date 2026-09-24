@@ -55,6 +55,78 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
+/** Turn a plain-text body (admin-written) into safe HTML paragraphs. */
+function textToHtml(body: string): string {
+  return escapeHtml(body.trim()).replace(/\n/g, "<br>");
+}
+
+/** Generic marketing/campaign email with a required unsubscribe footer. */
+export function campaignEmailHtml(opts: {
+  orgName: string;
+  clientName: string;
+  body: string;
+  unsubscribeUrl?: string;
+  ctaText?: string;
+  ctaUrl?: string;
+}): string {
+  const { orgName, clientName, body, unsubscribeUrl, ctaText, ctaUrl } = opts;
+  return `
+  <div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#1f1f23">
+    <h2 style="font-weight:600;color:#a24e6b">${escapeHtml(orgName)}</h2>
+    <p style="margin:12px 0">Hola ${escapeHtml(clientName)},</p>
+    <div style="font-size:15px;line-height:1.6;color:#33333a">${textToHtml(body)}</div>
+    ${
+      ctaText && ctaUrl
+        ? `<p style="margin:22px 0"><a href="${ctaUrl}" style="background:#a24e6b;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600;display:inline-block">${escapeHtml(ctaText)}</a></p>`
+        : ""
+    }
+    <hr style="border:none;border-top:1px solid #eee;margin:24px 0">
+    <p style="color:#9a9aa0;font-size:12px">
+      Recibís este correo porque sos clienta de ${escapeHtml(orgName)}.
+      ${unsubscribeUrl ? `<br><a href="${unsubscribeUrl}" style="color:#9a9aa0">No quiero recibir más novedades</a>` : ""}
+    </p>
+  </div>`;
+}
+
+/** Review-request email sent after an appointment. */
+export function reviewRequestEmailHtml(opts: {
+  orgName: string;
+  clientName: string;
+  reviewUrl: string;
+}): string {
+  const { orgName, clientName, reviewUrl } = opts;
+  return `
+  <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#1f1f23">
+    <h2 style="font-weight:600">¿Cómo la pasaste, ${escapeHtml(clientName)}? 💕</h2>
+    <p>Gracias por venir a <strong>${escapeHtml(orgName)}</strong>. Nos encantaría saber tu opinión: te toma 20 segundos y nos ayuda un montón.</p>
+    <p style="margin:22px 0">
+      <a href="${reviewUrl}" style="background:#a24e6b;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600;display:inline-block">Dejar mi opinión</a>
+    </p>
+    <p style="color:#9a9aa0;font-size:13px">¡Gracias! ✨</p>
+  </div>`;
+}
+
+/** Birthday greeting email. */
+export function birthdayEmailHtml(opts: {
+  orgName: string;
+  clientName: string;
+  body: string;
+  ctaUrl?: string;
+}): string {
+  const { orgName, clientName, body, ctaUrl } = opts;
+  const text = body.trim() || `¡Feliz cumple! 🎉 Todo el equipo de ${orgName} te desea un día hermoso. Te esperamos para festejarlo con las uñas divinas 💅`;
+  return `
+  <div style="font-family:system-ui,sans-serif;max-width:480px;margin:0 auto;color:#1f1f23">
+    <h2 style="font-weight:600;color:#a24e6b">¡Feliz cumpleaños, ${escapeHtml(clientName)}! 🎂</h2>
+    <div style="font-size:15px;line-height:1.6;color:#33333a">${textToHtml(text)}</div>
+    ${
+      ctaUrl
+        ? `<p style="margin:22px 0"><a href="${ctaUrl}" style="background:#a24e6b;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600;display:inline-block">Reservar mi turno</a></p>`
+        : ""
+    }
+  </div>`;
+}
+
 /** Password reset email. */
 export function resetEmailHtml(opts: { name: string | null; url: string }): string {
   const { name, url } = opts;

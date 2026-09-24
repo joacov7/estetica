@@ -53,3 +53,16 @@ export const costSettingsSchema = z.object({
 });
 
 export type CostSettingsInput = z.infer<typeof costSettingsSchema>;
+
+export const marketingSettingsSchema = z.object({
+  reviewsEnabled: z.boolean(),
+  reviewRequestEnabled: z.boolean(),
+  reviewRequestHoursAfter: z.coerce.number().int().min(1).max(168),
+  birthdayGreetingEnabled: z.boolean(),
+  birthdayGreetingText: z.string().trim().max(1000).optional().or(z.literal("")),
+  followUpEnabled: z.boolean(),
+  followUpDays: z.coerce.number().int().min(7, "Mínimo 7 días").max(365),
+  followUpText: z.string().trim().max(1000).optional().or(z.literal("")),
+});
+
+export type MarketingSettingsInput = z.infer<typeof marketingSettingsSchema>;

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Instagram, MapPin, Clock, Sparkles, MessageCircle, ChevronRight, Navigation } from "lucide-react";
-import { and, asc, eq, isNull } from "drizzle-orm";
+import { Instagram, MapPin, Clock, Sparkles, MessageCircle, ChevronRight, Navigation, Star } from "lucide-react";
+import { and, asc, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { organizations, services, professionals, businessHours } from "@/db/schema";
+import { organizations, services, professionals, businessHours, reviews } from "@/db/schema";
 import { buttonVariants } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
+import { getOrgSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +19,7 @@ export default async function PublicOrgPage({ params }: { params: Promise<{ slug
   const [org] = await db.select().from(organizations).where(eq(organizations.slug, slug)).limit(1);
   if (!org) notFound();
 
-  const [svc, pros, hours] = await Promise.all([
+  const [svc, pros, hours, settings, revList] = await Promise.all([
     db.select().from(services).where(and(eq(services.organizationId, org.id), eq(services.isActive, true))).orderBy(asc(services.sortOrder)),
     db.select().from(professionals).where(and(eq(professionals.organizationId, org.id), eq(professionals.isActive, true))).orderBy(asc(professionals.sortOrder)),
     db
@@ -26,7 +27,16 @@ export default async function PublicOrgPage({ params }: { params: Promise<{ slug
       .from(businessHours)
       .where(and(eq(businessHours.organizationId, org.id), isNull(businessHours.professionalId)))
       .orderBy(asc(businessHours.weekday)),
+    getOrgSettings(org.id),
+    db
+      .select({ id: reviews.id, authorName: reviews.authorName, rating: reviews.rating, comment: reviews.comment })
+      .from(reviews)
+      .where(and(eq(reviews.organizationId, org.id), eq(reviews.status, "published")))
+      .orderBy(desc(reviews.isFeatured), desc(reviews.createdAt))
+      .limit(6),
   ]);
+  const reviewCount = revList.length;
+  const reviewAvg = reviewCount ? revList.reduce((s, r) => s + r.rating, 0) / reviewCount : 0;
 
   const currency = { currency: org.currency, locale: org.locale };
   const initial = org.name.trim().charAt(0).toUpperCase();
@@ -157,6 +167,41 @@ export default async function PublicOrgPage({ params }: { params: Promise<{ slug
                 )}
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* ---------- OPINIONES ---------- */}
+      {settings.reviewsEnabled && reviewCount > 0 && (
+        <section className="container px-6 py-12">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <SectionTitle kicker="Opiniones" title="Lo que dicen nuestras clientas" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="inline-flex">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Star key={n} className={`size-4 ${n <= Math.round(reviewAvg) ? "fill-primary text-primary" : "text-muted-foreground/40"}`} />
+                ))}
+              </span>
+              {reviewAvg.toFixed(1)}
+            </div>
+          </div>
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {revList.map((r) => (
+              <figure key={r.id} className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <span className="inline-flex">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <Star key={n} className={`size-4 ${n <= r.rating ? "fill-primary text-primary" : "text-muted-foreground/40"}`} />
+                  ))}
+                </span>
+                {r.comment && <blockquote className="mt-3 flex-1 text-sm text-foreground/90">“{r.comment}”</blockquote>}
+                <figcaption className="mt-3 text-sm font-medium text-muted-foreground">— {r.authorName}</figcaption>
+              </figure>
+            ))}
+          </div>
+          <div className="mt-6 text-center sm:text-left">
+            <Link href={`/${slug}/opiniones`} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              Ver todas y dejar la tuya <ChevronRight className="size-4" />
+            </Link>
           </div>
         </section>
       )}

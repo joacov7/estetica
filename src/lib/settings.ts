@@ -22,6 +22,24 @@ export interface OrgSettings {
   insumosPct: number;
   /** Fixed monthly costs (rent, monotributo, services…) in cents. */
   monthlyFixedCents: number;
+
+  // --- reviews & marketing --------------------------------------------------
+  /** Accept client reviews and show published ones on the public page. */
+  reviewsEnabled: boolean;
+  /** Email a review request after an appointment is marked "atendido". */
+  reviewRequestEnabled: boolean;
+  /** Hours to wait after the appointment before asking for a review. */
+  reviewRequestHoursAfter: number;
+  /** Greet clients by email on their birthday. */
+  birthdayGreetingEnabled: boolean;
+  /** Birthday message body (plain text). Empty → a friendly default is used. */
+  birthdayGreetingText: string;
+  /** Win-back: email clients who haven't visited in a while. */
+  followUpEnabled: boolean;
+  /** Days since last visit before a win-back email is sent. */
+  followUpDays: number;
+  /** Win-back message body (plain text). Empty → a friendly default is used. */
+  followUpText: string;
 }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
@@ -32,6 +50,14 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   reminderHoursAhead: 24,
   insumosPct: 0,
   monthlyFixedCents: 0,
+  reviewsEnabled: true,
+  reviewRequestEnabled: false,
+  reviewRequestHoursAfter: 3,
+  birthdayGreetingEnabled: false,
+  birthdayGreetingText: "",
+  followUpEnabled: false,
+  followUpDays: 45,
+  followUpText: "",
 };
 
 export async function getOrgSettings(organizationId: string): Promise<OrgSettings> {

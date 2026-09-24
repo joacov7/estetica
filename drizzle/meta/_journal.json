@@ -43,6 +43,13 @@
       "when": 1789388222455,
       "tag": "0005_reserve_reset_slugs",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790277885868,
+      "tag": "0006_marketing",
+      "breakpoints": true
     }
   ]
 }

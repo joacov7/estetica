@@ -12,11 +12,13 @@ import {
   bookingSettingsSchema,
   reminderSettingsSchema,
   costSettingsSchema,
+  marketingSettingsSchema,
   type OrgProfileInput,
   type BusinessHoursInput,
   type BookingSettingsInput,
   type ReminderSettingsInput,
   type CostSettingsInput,
+  type MarketingSettingsInput,
 } from "@/lib/validations/org";
 
 const WRITE_ROLES = ["owner", "admin"];
@@ -127,6 +129,32 @@ export async function updateCostSettings(input: CostSettingsInput) {
 
   revalidatePath("/dashboard/configuracion");
   revalidatePath("/dashboard/analytics");
+  return { ok: true as const };
+}
+
+export async function updateMarketingSettings(input: MarketingSettingsInput) {
+  const parsed = marketingSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) {
+    return { ok: false as const, error: "No autorizado" };
+  }
+  const current = await getOrgSettings(org.id);
+  const data = {
+    ...current,
+    ...parsed.data,
+    birthdayGreetingText: parsed.data.birthdayGreetingText || "",
+    followUpText: parsed.data.followUpText || "",
+  };
+  await db
+    .insert(settings)
+    .values({ organizationId: org.id, data })
+    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
+
+  revalidatePath("/dashboard/configuracion");
+  revalidatePath(`/${org.slug}`);
   return { ok: true as const };
 }
 

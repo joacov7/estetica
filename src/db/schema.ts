@@ -248,6 +248,8 @@ export const clients = pgTable(
     referredById: uuid("referred_by_id").references((): AnyPgColumn => clients.id, {
       onDelete: "set null",
     }),
+    // Marketing: when true the client opted out of campaigns/automations.
+    marketingOptOut: boolean("marketing_opt_out").notNull().default(false),
     createdAt: ts(),
   },
   (t) => [
@@ -473,17 +475,65 @@ export const waitlist = pgTable("waitlist", {
   createdAt: ts(),
 });
 
-export const notifications = pgTable("notifications", {
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    appointmentId: uuid("appointment_id").references(() => appointments.id, {
+      onDelete: "cascade",
+    }),
+    clientId: uuid("client_id").references(() => clients.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    channel: text("channel").notNull().default("in_app"),
+    payload: jsonb("payload").notNull().default({}),
+    sentAt: timestamp("sent_at", { withTimezone: true, mode: "string" }),
+    createdAt: ts(),
+  },
+  (t) => [index("notifications_client_type_idx").on(t.clientId, t.type)],
+);
+
+// --- reviews & marketing campaigns ------------------------------------------
+/**
+ * Client reviews. Anonymous public submissions land as "pending" for the admin
+ * to approve; verified (post-appointment, token) reviews publish directly.
+ */
+export const reviews = pgTable(
+  "reviews",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id").references(() => clients.id, { onDelete: "set null" }),
+    appointmentId: uuid("appointment_id").references(() => appointments.id, {
+      onDelete: "set null",
+    }),
+    authorName: text("author_name").notNull(),
+    rating: integer("rating").notNull(), // 1..5
+    comment: text("comment"),
+    status: text("status").notNull().default("pending"), // pending | published | hidden
+    isFeatured: boolean("is_featured").notNull().default(false),
+    createdAt: ts(),
+  },
+  (t) => [index("reviews_org_status_idx").on(t.organizationId, t.status)],
+);
+
+/** Email marketing campaign sent to a client segment. */
+export const campaigns = pgTable("campaigns", {
   id: uuid("id").primaryKey().defaultRandom(),
   organizationId: uuid("organization_id")
     .notNull()
     .references(() => organizations.id, { onDelete: "cascade" }),
-  appointmentId: uuid("appointment_id").references(() => appointments.id, {
-    onDelete: "cascade",
-  }),
-  type: text("type").notNull(),
-  channel: text("channel").notNull().default("in_app"),
-  payload: jsonb("payload").notNull().default({}),
+  name: text("name").notNull(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  segment: text("segment").notNull().default("all"), // all | inactive | birthday_month | with_email
+  status: text("status").notNull().default("draft"), // draft | sent
+  recipientCount: integer("recipient_count").notNull().default(0),
+  sentCount: integer("sent_count").notNull().default(0),
   sentAt: timestamp("sent_at", { withTimezone: true, mode: "string" }),
   createdAt: ts(),
 });
@@ -503,6 +553,9 @@ export type Client = typeof clients.$inferSelect;
 export type Appointment = typeof appointments.$inferSelect;
 export type BusinessHour = typeof businessHours.$inferSelect;
 export type User = typeof users.$inferSelect;
+
+export type Review = typeof reviews.$inferSelect;
+export type Campaign = typeof campaigns.$inferSelect;
 
 export type AppointmentStatus = (typeof appointmentStatus.enumValues)[number];
 export type MemberRole = (typeof memberRole.enumValues)[number];

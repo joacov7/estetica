@@ -68,6 +68,8 @@ export const loginLimiter = makeLimiter(10, 10 * MIN, "login");
 export const signupLimiter = makeLimiter(5, 60 * MIN, "signup");
 /** Availability lookups: 60 / 5 min per IP. */
 export const availabilityLimiter = makeLimiter(60, 5 * MIN, "avail");
+/** Public review submissions: 4 / hour per IP. */
+export const reviewLimiter = makeLimiter(4, 60 * MIN, "review");
 
 /** Best-effort client IP from proxy headers. */
 export function clientIp(headers: Headers): string {
