@@ -13,12 +13,14 @@ import {
   reminderSettingsSchema,
   costSettingsSchema,
   marketingSettingsSchema,
+  integrationsSettingsSchema,
   type OrgProfileInput,
   type BusinessHoursInput,
   type BookingSettingsInput,
   type ReminderSettingsInput,
   type CostSettingsInput,
   type MarketingSettingsInput,
+  type IntegrationsSettingsInput,
 } from "@/lib/validations/org";
 
 const WRITE_ROLES = ["owner", "admin"];
@@ -147,6 +149,34 @@ export async function updateMarketingSettings(input: MarketingSettingsInput) {
     ...parsed.data,
     birthdayGreetingText: parsed.data.birthdayGreetingText || "",
     followUpText: parsed.data.followUpText || "",
+  };
+  await db
+    .insert(settings)
+    .values({ organizationId: org.id, data })
+    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
+
+  revalidatePath("/dashboard/configuracion");
+  revalidatePath(`/${org.slug}`);
+  return { ok: true as const };
+}
+
+export async function updateIntegrationsSettings(input: IntegrationsSettingsInput) {
+  const parsed = integrationsSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) {
+    return { ok: false as const, error: "No autorizado" };
+  }
+  const current = await getOrgSettings(org.id);
+  const data = {
+    ...current,
+    whatsappCountryCode: parsed.data.whatsappCountryCode,
+    googleReviewUrl: parsed.data.googleReviewUrl || "",
+    googlePlaceUrl: parsed.data.googlePlaceUrl || "",
+    googleRating: parsed.data.googleRating,
+    googleReviewCount: parsed.data.googleReviewCount,
   };
   await db
     .insert(settings)

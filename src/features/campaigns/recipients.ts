@@ -12,33 +12,36 @@ export const SEGMENT_LABEL: Record<Segment, string> = {
   birthday_month: "Cumpleañeras del mes",
 };
 
+export type Channel = "email" | "whatsapp";
+
 export interface Recipient {
   id: string;
   name: string;
   email: string;
+  phone: string;
 }
 
 /**
- * Resolve the recipients of a segment: clients with an email who have not
- * opted out of marketing, filtered by the segment rule.
+ * Resolve the recipients of a segment: clients who have not opted out of
+ * marketing and have the contact field required by the channel (email for
+ * email, phone for WhatsApp), filtered by the segment rule.
  */
-export async function resolveRecipients(orgId: string, segment: Segment): Promise<Recipient[]> {
+export async function resolveRecipients(
+  orgId: string,
+  segment: Segment,
+  channel: Channel = "email",
+): Promise<Recipient[]> {
   const [base, attended, settings] = await Promise.all([
     db
       .select({
         id: clients.id,
         name: clients.name,
         email: clients.email,
+        phone: clients.phone,
         birthday: clients.birthday,
       })
       .from(clients)
-      .where(
-        and(
-          eq(clients.organizationId, orgId),
-          isNotNull(clients.email),
-          eq(clients.marketingOptOut, false),
-        ),
-      ),
+      .where(and(eq(clients.organizationId, orgId), eq(clients.marketingOptOut, false))),
     db
       .select({ clientId: appointments.clientId, startAt: appointments.startAt })
       .from(appointments)
@@ -58,30 +61,33 @@ export async function resolveRecipients(orgId: string, segment: Segment): Promis
   const cutoff = now - settings.followUpDays * 24 * 60 * 60 * 1000;
   const month = new Date().getUTCMonth() + 1; // 1..12
 
-  const withEmail = base.filter((c): c is Recipient & { birthday: string | null } =>
-    Boolean(c.email && c.email.includes("@")),
+  const reachable = base.filter((c) =>
+    channel === "whatsapp" ? Boolean(c.phone) : Boolean(c.email && c.email.includes("@")),
   );
 
-  let filtered = withEmail;
+  let filtered = reachable;
   if (segment === "inactive") {
-    filtered = withEmail.filter((c) => (lastVisit.get(c.id) ?? 0) < cutoff);
+    filtered = reachable.filter((c) => (lastVisit.get(c.id) ?? 0) < cutoff);
   } else if (segment === "birthday_month") {
-    filtered = withEmail.filter((c) => {
+    filtered = reachable.filter((c) => {
       if (!c.birthday) return false;
       const m = Number(c.birthday.slice(5, 7)); // "YYYY-MM-DD"
       return m === month;
     });
   }
 
-  return filtered.map((c) => ({ id: c.id, name: c.name, email: c.email }));
+  return filtered.map((c) => ({ id: c.id, name: c.name, email: c.email ?? "", phone: c.phone }));
 }
 
-/** Recipient counts for every segment (for the compose UI). */
-export async function segmentCounts(orgId: string): Promise<Record<Segment, number>> {
+/** Recipient counts for every segment and channel (for the compose UI). */
+export async function segmentCounts(
+  orgId: string,
+  channel: Channel = "email",
+): Promise<Record<Segment, number>> {
   const [all, inactive, birthday] = await Promise.all([
-    resolveRecipients(orgId, "all"),
-    resolveRecipients(orgId, "inactive"),
-    resolveRecipients(orgId, "birthday_month"),
+    resolveRecipients(orgId, "all", channel),
+    resolveRecipients(orgId, "inactive", channel),
+    resolveRecipients(orgId, "birthday_month", channel),
   ]);
   return { all: all.length, inactive: inactive.length, birthday_month: birthday.length };
 }

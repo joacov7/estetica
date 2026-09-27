@@ -54,6 +54,16 @@ export const costSettingsSchema = z.object({
 
 export type CostSettingsInput = z.infer<typeof costSettingsSchema>;
 
+export const integrationsSettingsSchema = z.object({
+  whatsappCountryCode: z.string().trim().regex(/^\d{1,4}$/, "Solo dígitos (ej. 549)"),
+  googleReviewUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+  googlePlaceUrl: z.string().trim().url("URL inválida").max(500).optional().or(z.literal("")),
+  googleRating: z.coerce.number().min(0).max(5),
+  googleReviewCount: z.coerce.number().int().min(0).max(1_000_000),
+});
+
+export type IntegrationsSettingsInput = z.infer<typeof integrationsSettingsSchema>;
+
 export const marketingSettingsSchema = z.object({
   reviewsEnabled: z.boolean(),
   reviewRequestEnabled: z.boolean(),

@@ -10,6 +10,21 @@ import { publicUrl } from "@/lib/site-url";
 import { createUnsubscribeToken } from "@/lib/marketing-token";
 import { resolveRecipients, type Segment } from "./recipients";
 
+const SEGMENTS = ["all", "inactive", "birthday_month"] as const;
+
+export type WhatsappRecipient = { id: string; name: string; phone: string };
+
+/** Phone list for a WhatsApp blast (manual click-to-chat, no API). */
+export async function getWhatsappRecipients(
+  segment: Segment,
+): Promise<{ ok: true; recipients: WhatsappRecipient[] } | { ok: false; error: string }> {
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false, error: "No autorizado" };
+  const seg = SEGMENTS.includes(segment) ? segment : "all";
+  const list = await resolveRecipients(org.id, seg, "whatsapp");
+  return { ok: true, recipients: list.map((r) => ({ id: r.id, name: r.name, phone: r.phone })) };
+}
+
 const WRITE_ROLES = ["owner", "admin"];
 const MAX_RECIPIENTS = 800;
 

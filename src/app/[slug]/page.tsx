@@ -171,6 +171,44 @@ export default async function PublicOrgPage({ params }: { params: Promise<{ slug
         </section>
       )}
 
+      {/* ---------- GOOGLE ---------- */}
+      {(settings.googleRating > 0 || settings.googlePlaceUrl) && (
+        <section className="container px-6 py-6">
+          <div className="mx-auto flex max-w-xl flex-col items-center gap-3 rounded-2xl border border-border bg-card p-5 text-center shadow-sm sm:flex-row sm:justify-between sm:text-left">
+            <div className="flex items-center gap-3">
+              <span className="font-display text-2xl font-semibold tracking-tight">
+                <span className="text-[#4285F4]">G</span>
+                <span className="text-[#EA4335]">o</span>
+                <span className="text-[#FBBC05]">o</span>
+                <span className="text-[#4285F4]">g</span>
+                <span className="text-[#34A853]">l</span>
+                <span className="text-[#EA4335]">e</span>
+              </span>
+              {settings.googleRating > 0 && (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-xl font-semibold">{settings.googleRating.toFixed(1)}</span>
+                    <span className="inline-flex">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star key={n} className={`size-4 ${n <= Math.round(settings.googleRating) ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"}`} />
+                      ))}
+                    </span>
+                  </div>
+                  {settings.googleReviewCount > 0 && (
+                    <p className="text-xs text-muted-foreground">{settings.googleReviewCount} reseñas en Google</p>
+                  )}
+                </div>
+              )}
+            </div>
+            {settings.googlePlaceUrl && (
+              <a href={settings.googlePlaceUrl} target="_blank" rel="noopener noreferrer" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Ver en Google <ChevronRight className="size-4" />
+              </a>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* ---------- OPINIONES ---------- */}
       {settings.reviewsEnabled && reviewCount > 0 && (
         <section className="container px-6 py-12">

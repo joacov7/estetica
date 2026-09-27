@@ -6,6 +6,7 @@ import { getCurrentOrg } from "@/features/org/current";
 import { emailConfigured } from "@/services/notifications/email";
 import { segmentCounts, SEGMENT_LABEL, type Segment } from "@/features/campaigns/recipients";
 import { CampaignComposer } from "@/features/campaigns/campaign-composer";
+import { getOrgSettings } from "@/lib/settings";
 import { Badge } from "@/components/ui/badge";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +15,10 @@ export default async function CampanasPage() {
   const { org } = await getCurrentOrg();
   if (!org) return <p className="text-muted-foreground">Todavía no tenés un negocio.</p>;
 
-  const [counts, history] = await Promise.all([
-    segmentCounts(org.id),
+  const [emailCounts, waCounts, settings, history] = await Promise.all([
+    segmentCounts(org.id, "email"),
+    segmentCounts(org.id, "whatsapp"),
+    getOrgSettings(org.id),
     db.select().from(campaigns).where(eq(campaigns.organizationId, org.id)).orderBy(desc(campaigns.createdAt)).limit(30),
   ]);
 
@@ -24,12 +27,17 @@ export default async function CampanasPage() {
       <header>
         <h1 className="font-display text-3xl font-semibold">Campañas</h1>
         <p className="text-muted-foreground">
-          Enviá novedades y promos por email a tus clientas. Solo se envía a quienes tienen email
-          cargado y no se dieron de baja.
+          Enviá novedades y promos por email o WhatsApp. Solo llega a quienes tienen el dato cargado
+          y no se dieron de baja.
         </p>
       </header>
 
-      <CampaignComposer counts={counts} emailReady={emailConfigured} />
+      <CampaignComposer
+        emailCounts={emailCounts}
+        waCounts={waCounts}
+        emailReady={emailConfigured}
+        countryCode={settings.whatsappCountryCode}
+      />
 
       <div>
         <h2 className="mb-3 font-display text-lg font-semibold">Historial</h2>

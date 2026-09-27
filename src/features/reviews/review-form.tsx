@@ -11,11 +11,13 @@ export function ReviewForm({
   token,
   siteKey,
   verified,
+  googleReviewUrl,
 }: {
   slug: string;
   token?: string;
   siteKey?: string;
   verified?: boolean;
+  googleReviewUrl?: string;
 }) {
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
@@ -39,6 +41,7 @@ export function ReviewForm({
   }
 
   if (done) {
+    const inviteGoogle = rating >= 4 && Boolean(googleReviewUrl);
     return (
       <div className="rounded-2xl border border-border bg-card p-6 text-center">
         <CheckCircle2 className="mx-auto size-10 text-primary" />
@@ -48,6 +51,19 @@ export function ReviewForm({
             ? "Ya está publicada en la página."
             : "La vamos a revisar y publicar en breve."}
         </p>
+        {inviteGoogle && (
+          <div className="mt-5 border-t border-border pt-5">
+            <p className="text-sm text-muted-foreground">¿Nos ayudás con una reseña en Google? Nos da un montón de visibilidad 🙏</p>
+            <a
+              href={googleReviewUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 py-2 text-sm font-medium hover:border-primary/40"
+            >
+              Dejar mi reseña en Google
+            </a>
+          </div>
+        )}
       </div>
     );
   }

@@ -85,7 +85,13 @@ export default async function OpinionesPage({
       {settings.reviewsEnabled ? (
         <section className="mb-10">
           <h2 className="mb-3 font-display text-lg font-semibold">Dejá tu opinión</h2>
-          <ReviewForm slug={org.slug} token={t} siteKey={siteKey} verified={verified} />
+          <ReviewForm
+            slug={org.slug}
+            token={t}
+            siteKey={siteKey}
+            verified={verified}
+            googleReviewUrl={settings.googleReviewUrl || undefined}
+          />
         </section>
       ) : (
         <p className="mb-10 rounded-2xl border border-border bg-card p-4 text-sm text-muted-foreground">

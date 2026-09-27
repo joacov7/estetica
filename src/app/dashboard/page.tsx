@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { DollarSign, CalendarCheck, Users, Scissors, AlertCircle, ArrowRight } from "lucide-react";
+import { DollarSign, CalendarCheck, Users, Scissors, AlertCircle, ArrowRight, Star, Cake, HeartHandshake, MessageCircle } from "lucide-react";
 import { fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import { and, count, eq, gte, inArray, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { services, professionals, clients, appointments, appointmentServices, businessHours } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
+import { getDashboardInsights, type ContactSuggestion } from "@/features/dashboard/insights";
 import { StatCard } from "@/components/ui/stat-card";
 import { buttonVariants } from "@/components/ui/button";
 import { formatMoney } from "@/lib/money";
@@ -58,6 +59,10 @@ export default async function DashboardHome() {
     revenue = lines.reduce((s, x) => s + x.priceCents, 0);
   }
 
+  const insights = await getDashboardInsights(org.id, org.name, org.timezone);
+  const hasOpportunities =
+    insights.pendingReviews > 0 || insights.birthdays.length > 0 || insights.inactive.length > 0;
+
   return (
     <div className="space-y-6">
       <header>
@@ -100,6 +105,64 @@ export default async function DashboardHome() {
         <StatCard label="Clientes" value={String(cliCount.c)} icon={Users} />
       </div>
 
+      {hasOpportunities && (
+        <section className="space-y-3">
+          <h2 className="font-display text-lg font-semibold">Oportunidades de la semana</h2>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {/* Reseñas nuevas */}
+            <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Star className="size-4 text-primary" />
+                <span className="text-sm font-medium">Reseñas por aprobar</span>
+              </div>
+              <p className="mt-2 font-display text-3xl font-semibold">{insights.pendingReviews}</p>
+              <p className="mt-1 flex-1 text-sm text-muted-foreground">
+                {insights.pendingReviews > 0
+                  ? "Revisalas y publicá las que quieras mostrar."
+                  : "No hay opiniones pendientes. ✨"}
+              </p>
+              <Link href="/dashboard/resenas" className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+                Ir a Reseñas <ArrowRight className="size-4" />
+              </Link>
+            </div>
+
+            {/* Cumpleaños */}
+            <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Cake className="size-4 text-primary" />
+                <span className="text-sm font-medium">Cumpleaños de la semana</span>
+              </div>
+              {insights.birthdays.length > 0 ? (
+                <SuggestionList items={insights.birthdays} />
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">Ninguno en los próximos 7 días.</p>
+              )}
+            </div>
+
+            {/* Inactivas */}
+            <div className="flex flex-col rounded-2xl border border-border bg-card p-5 shadow-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <HeartHandshake className="size-4 text-primary" />
+                <span className="text-sm font-medium">Para reenganchar</span>
+              </div>
+              {insights.inactive.length > 0 ? (
+                <>
+                  <SuggestionList items={insights.inactive} />
+                  {insights.inactiveTotal > insights.inactive.length && (
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      +{insights.inactiveTotal - insights.inactive.length} más. Enviales una campaña desde{" "}
+                      <Link href="/dashboard/campanas" className="text-primary hover:underline">Campañas</Link>.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-muted-foreground">Todas tus clientas vinieron hace poco. 💪</p>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
       <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
         <h2 className="font-display text-lg font-semibold">Profesionales activos</h2>
         <p className="mt-1 text-3xl font-semibold">{proCount.c}</p>
@@ -108,6 +171,32 @@ export default async function DashboardHome() {
         </p>
       </div>
     </div>
+  );
+}
+
+function SuggestionList({ items }: { items: ContactSuggestion[] }) {
+  return (
+    <ul className="mt-3 space-y-2">
+      {items.map((s) => (
+        <li key={s.id} className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{s.name}</p>
+            <p className="text-xs text-muted-foreground">{s.detail}</p>
+          </div>
+          {s.waUrl && (
+            <a
+              href={s.waUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Escribir a ${s.name} por WhatsApp`}
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50"
+            >
+              <MessageCircle className="size-3.5" /> WhatsApp
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 

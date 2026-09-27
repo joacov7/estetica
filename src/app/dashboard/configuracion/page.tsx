@@ -8,6 +8,7 @@ import { HoursEditor, type HourRow } from "@/features/settings/hours-editor";
 import { BookingSettingsForm } from "@/features/settings/booking-settings-form";
 import { ReminderSettingsForm } from "@/features/settings/reminder-settings-form";
 import { MarketingSettingsForm } from "@/features/settings/marketing-settings-form";
+import { IntegrationsSettingsForm } from "@/features/settings/integrations-settings-form";
 import { CostSettingsForm } from "@/features/settings/cost-settings-form";
 import { PublicLink } from "@/features/settings/public-link";
 import { ImageUploader } from "@/features/media/image-uploader";
@@ -58,6 +59,7 @@ export default async function ConfiguracionPage() {
       <BookingSettingsForm initial={bookingSettings} />
       <ReminderSettingsForm initial={bookingSettings} />
       <MarketingSettingsForm initial={bookingSettings} />
+      <IntegrationsSettingsForm initial={bookingSettings} />
       <CostSettingsForm initial={bookingSettings} />
       <HoursEditor initial={hours} />
     </div>

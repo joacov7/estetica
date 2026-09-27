@@ -40,6 +40,18 @@ export interface OrgSettings {
   followUpDays: number;
   /** Win-back message body (plain text). Empty → a friendly default is used. */
   followUpText: string;
+
+  // --- channels & integrations ---------------------------------------------
+  /** Country/dialing code prepended to client phones for WhatsApp links (AR mobiles: "549"). */
+  whatsappCountryCode: string;
+  /** Google "write a review" link (funnels happy clients to Google). */
+  googleReviewUrl: string;
+  /** Google Business profile link ("ver en Google"). */
+  googlePlaceUrl: string;
+  /** Manually-entered Google rating to show on the page (0 = hidden). */
+  googleRating: number;
+  /** Manually-entered Google review count to show on the page. */
+  googleReviewCount: number;
 }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
@@ -58,6 +70,11 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   followUpEnabled: false,
   followUpDays: 45,
   followUpText: "",
+  whatsappCountryCode: "549",
+  googleReviewUrl: "",
+  googlePlaceUrl: "",
+  googleRating: 0,
+  googleReviewCount: 0,
 };
 
 export async function getOrgSettings(organizationId: string): Promise<OrgSettings> {
