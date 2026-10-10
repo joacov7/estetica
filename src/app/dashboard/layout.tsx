@@ -51,7 +51,7 @@ const NAV = [
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Gate the dashboard here (relative redirect → independent of AUTH_URL).
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  if (!session?.user?.id) redirect("/login");
 
   return (
     <div className="flex min-h-screen">

@@ -6,6 +6,7 @@ import { appointments, appointmentServices, clients, organizations, settings, no
 import { DEFAULT_SETTINGS, type OrgSettings } from "@/lib/settings";
 import { emailConfigured, sendEmail, reminderEmailHtml } from "@/services/notifications/email";
 import { createBookingToken } from "@/lib/booking-token";
+import { logInfo, logWarn } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -101,8 +102,11 @@ export async function GET(req: Request) {
         sentAt: new Date().toISOString(),
       });
       sent++;
+    } else {
+      logWarn("reminder.send_failed", { appointmentId: r.id });
     }
   }
 
+  if (sent > 0) logInfo("cron.reminders", { sent, considered: due.length });
   return NextResponse.json({ sent, considered: due.length });
 }

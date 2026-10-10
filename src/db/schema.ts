@@ -69,6 +69,8 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name"),
   passwordHash: text("password_hash").notNull(),
+  // Bumped whenever the password changes; used to invalidate existing JWTs.
+  passwordChangedAt: timestamp("password_changed_at", { withTimezone: true, mode: "string" }),
   createdAt: ts(),
 });
 

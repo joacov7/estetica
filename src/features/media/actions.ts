@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { organizations, services, professionals, nailRecords } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
 import { blobConfigured } from "@/lib/blob";
+import { logError } from "@/lib/logger";
 
 type Target = "org-logo" | "org-cover" | "service" | "professional" | "nail-before" | "nail-after";
 const WRITE_ROLES = ["owner", "admin"];
@@ -71,7 +72,8 @@ export async function uploadImage(formData: FormData): Promise<UploadResult> {
     revalidatePath("/dashboard/servicios");
     revalidatePath("/dashboard/profesionales");
     return { ok: true, url: blob.url };
-  } catch {
+  } catch (e) {
+    logError("media.upload_failed", e, { target });
     return { ok: false, error: "No se pudo subir la imagen. Intentá de nuevo." };
   }
 }

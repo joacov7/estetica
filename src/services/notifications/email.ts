@@ -1,4 +1,5 @@
 import "server-only";
+import { logError, logWarn } from "@/lib/logger";
 
 /**
  * Email sending via Resend. Graceful: if RESEND_API_KEY is unset, sending is a
@@ -23,8 +24,10 @@ export async function sendEmail(params: {
       headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from: FROM, to: params.to, subject: params.subject, html: params.html }),
     });
+    if (!res.ok) logWarn("email.send_rejected", { status: res.status });
     return res.ok;
-  } catch {
+  } catch (e) {
+    logError("email.send_failed", e);
     return false;
   }
 }

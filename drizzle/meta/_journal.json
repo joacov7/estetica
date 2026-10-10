@@ -64,6 +64,13 @@
       "when": 1791596892197,
       "tag": "0008_loyalty_points",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791675702445,
+      "tag": "0009_user_password_changed_at",
+      "breakpoints": true
     }
   ]
 }

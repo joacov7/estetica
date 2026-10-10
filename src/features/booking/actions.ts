@@ -17,6 +17,7 @@ import { createBookingToken } from "@/lib/booking-token";
 import { bookingLimiter, clientIp } from "@/lib/rate-limit";
 import { verifyCaptcha } from "@/lib/captcha";
 import { generateReferralCode } from "@/lib/referral";
+import { logError } from "@/lib/logger";
 import { resolvePromoForBooking } from "./promo-actions";
 
 export type BookingResult =
@@ -175,6 +176,7 @@ export async function createPublicBooking(input: BookingInput): Promise<BookingR
         return { ok: false, error: "Ese horario acaba de ser reservado.", slotTaken: true };
       }
       if (code !== "23505") {
+        logError("booking.create_failed", e, { orgId: data.organizationId });
         return { ok: false, error: "No pudimos confirmar el turno. Intentá de nuevo." };
       }
       // 23505: booking_code collision → retry with a new code.

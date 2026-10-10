@@ -74,7 +74,10 @@ export async function resetPassword(
   }
 
   const passwordHash = await bcrypt.hash(String(password), 10);
-  await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+  await db
+    .update(users)
+    .set({ passwordHash, passwordChangedAt: new Date().toISOString() })
+    .where(eq(users.id, user.id));
   return { ok: true };
 }
 
@@ -114,7 +117,7 @@ export async function signup(input: SignupInput): Promise<SignupResult> {
   await db.transaction(async (tx) => {
     const [user] = await tx
       .insert(users)
-      .values({ email: v.email, name: v.name, passwordHash })
+      .values({ email: v.email, name: v.name, passwordHash, passwordChangedAt: new Date().toISOString() })
       .returning({ id: users.id });
 
     const [org] = await tx

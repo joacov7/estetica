@@ -20,6 +20,7 @@ import {
 import { publicUrl } from "@/lib/site-url";
 import { createBookingToken } from "@/lib/booking-token";
 import { createUnsubscribeToken } from "@/lib/marketing-token";
+import { logInfo } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
@@ -257,5 +258,6 @@ export async function GET(req: Request) {
     }
   }
 
+  if (result.birthdays || result.followups || result.reviewRequests) logInfo("cron.daily", { ...result });
   return NextResponse.json(result);
 }
