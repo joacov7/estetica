@@ -4,13 +4,15 @@ import { ChevronLeft, Phone, Mail, Cake } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { clients, appointments, appointmentServices, clientNotes, servicePacks, clientPacks } from "@/db/schema";
+import { clients, appointments, appointmentServices, clientNotes, servicePacks, clientPacks, nailRecords } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { NoteForm } from "@/features/clients/note-form";
 import { ReferralLink } from "@/features/referrals/referral-link";
 import { ClientPacks } from "@/features/loyalty/client-packs";
+import { NailRecords } from "@/features/nails/nail-records";
+import { blobConfigured } from "@/lib/blob";
 import type { AppointmentStatus } from "@/db/schema";
 
 export const dynamic = "force-dynamic";
@@ -62,12 +64,13 @@ export default async function ClientDetailPage({
       .where(and(eq(servicePacks.organizationId, org.id), eq(servicePacks.isActive, true))),
   ]);
 
-  const [appts, notes] = await Promise.all([
+  const [appts, notes, nails] = await Promise.all([
     db
       .select({
         id: appointments.id,
         startAt: appointments.startAt,
         status: appointments.status,
+        discountCents: appointments.discountCents,
       })
       .from(appointments)
       .where(and(eq(appointments.clientId, id), eq(appointments.organizationId, org.id)))
@@ -77,6 +80,23 @@ export default async function ClientDetailPage({
       .from(clientNotes)
       .where(eq(clientNotes.clientId, id))
       .orderBy(desc(clientNotes.createdAt)),
+    db
+      .select({
+        id: nailRecords.id,
+        shape: nailRecords.shape,
+        length: nailRecords.length,
+        color: nailRecords.color,
+        design: nailRecords.design,
+        technique: nailRecords.technique,
+        product: nailRecords.product,
+        observations: nailRecords.observations,
+        photoBeforeUrl: nailRecords.photoBeforeUrl,
+        photoAfterUrl: nailRecords.photoAfterUrl,
+        createdAt: nailRecords.createdAt,
+      })
+      .from(nailRecords)
+      .where(and(eq(nailRecords.clientId, id), eq(nailRecords.organizationId, org.id)))
+      .orderBy(desc(nailRecords.createdAt)),
   ]);
 
   // Services + price per appointment.
@@ -99,8 +119,10 @@ export default async function ClientDetailPage({
   }
 
   const currency = { currency: org.currency, locale: org.locale };
+  const netOf = (a: (typeof appts)[number]) =>
+    Math.max(0, (svcByAppt.get(a.id)?.total ?? 0) - (a.discountCents ?? 0));
   const attended = appts.filter((a) => a.status === "atendido");
-  const totalSpent = attended.reduce((s, a) => s + (svcByAppt.get(a.id)?.total ?? 0), 0);
+  const totalSpent = attended.reduce((s, a) => s + netOf(a), 0);
 
   return (
     <div className="space-y-6">
@@ -154,7 +176,12 @@ export default async function ClientDetailPage({
                   </div>
                   <div className="flex items-center gap-3">
                     {s && s.total > 0 && (
-                      <span className="text-sm text-muted-foreground">{formatMoney(s.total, currency)}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {formatMoney(netOf(a), currency)}
+                        {a.discountCents > 0 && (
+                          <span className="ml-1 text-xs text-primary">(−{formatMoney(a.discountCents, currency)})</span>
+                        )}
+                      </span>
                     )}
                     <Badge variant={STATUS[a.status].variant}>{STATUS[a.status].label}</Badge>
                   </div>
@@ -163,6 +190,9 @@ export default async function ClientDetailPage({
             })}
             {appts.length === 0 && <p className="p-6 text-muted-foreground">Sin turnos todavía.</p>}
           </div>
+
+          <h2 className="mb-3 mt-6 font-display text-lg font-semibold">Ficha técnica</h2>
+          <NailRecords clientId={client.id} records={nails} blobConfigured={blobConfigured} timezone={org.timezone} />
         </div>
 
         {/* Referral + Notes */}

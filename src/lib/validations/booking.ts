@@ -18,6 +18,7 @@ export const bookingSchema = z.object({
     email: z.string().trim().email("Email inválido").optional().or(z.literal("")),
     referralCode: z.string().trim().max(12).optional().or(z.literal("")),
   }),
+  promoCode: z.string().trim().max(40).optional().or(z.literal("")),
   captchaToken: z.string().optional(),
 });
 

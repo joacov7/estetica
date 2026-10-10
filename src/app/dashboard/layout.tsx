@@ -20,6 +20,7 @@ import {
   Star,
   Megaphone,
   QrCode,
+  TrendingUp,
 } from "lucide-react";
 import { redirect } from "next/navigation";
 import { auth, signOut } from "@/auth";
@@ -30,6 +31,7 @@ const NAV = [
   { href: "/dashboard/analytics", label: "Estadísticas", icon: BarChart3 },
   { href: "/dashboard/clientes", label: "Clientes", icon: Users },
   { href: "/dashboard/recordatorios", label: "Recordatorios", icon: Bell },
+  { href: "/dashboard/marketing", label: "Marketing", icon: TrendingUp },
   { href: "/dashboard/resenas", label: "Reseñas", icon: Star },
   { href: "/dashboard/campanas", label: "Campañas", icon: Megaphone },
   { href: "/dashboard/qr", label: "Códigos QR", icon: QrCode },

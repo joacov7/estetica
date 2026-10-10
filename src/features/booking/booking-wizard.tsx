@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Check, Loader2, CalendarCheck, MessageCircle } from "lucide-react";
+import { Check, Loader2, CalendarCheck, MessageCircle, Tag, Gift } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatMoney, depositCents } from "@/lib/money";
 import { cn } from "@/lib/utils";
 import { createPublicBooking, type BookingResult } from "./actions";
+import { validatePromoCode, checkGiftCard } from "./promo-actions";
 import { Turnstile } from "./turnstile";
 
 const TURNSTILE_SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -77,11 +78,50 @@ export function BookingWizard({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Extract<BookingResult, { ok: true }> | null>(null);
 
+  // Promo + gift card (applied at checkout; gift cards/packs redeemed in-salon).
+  const [promoCode, setPromoCode] = useState("");
+  const [promo, setPromo] = useState<{ name: string; discountCents: number } | null>(null);
+  const [promoMsg, setPromoMsg] = useState<string | null>(null);
+  const [checkingPromo, setCheckingPromo] = useState(false);
+  const [giftCode, setGiftCode] = useState("");
+  const [giftMsg, setGiftMsg] = useState<string | null>(null);
+  const [checkingGift, setCheckingGift] = useState(false);
+
   const currency = { currency: org.currency, locale: org.locale };
   const selected = services.filter((s) => serviceIds.includes(s.id));
   const totalPrice = selected.reduce((s, x) => s + x.priceCents, 0);
   const totalDuration = selected.reduce((s, x) => s + x.durationMin, 0);
   const totalDeposit = selected.reduce((s, x) => s + depositCents(x), 0);
+  const discount = promo?.discountCents ?? 0;
+  const totalFinal = Math.max(0, totalPrice - discount);
+
+  async function applyPromo() {
+    setPromoMsg(null);
+    if (!promoCode.trim()) return;
+    setCheckingPromo(true);
+    const res = await validatePromoCode({ organizationId: org.id, code: promoCode, serviceIds });
+    setCheckingPromo(false);
+    if (res.ok) {
+      setPromo({ name: res.name, discountCents: res.discountCents });
+      setPromoMsg(`✓ ${res.name}: −${formatMoney(res.discountCents, currency)}`);
+    } else {
+      setPromo(null);
+      setPromoMsg(res.error);
+    }
+  }
+
+  async function applyGift() {
+    setGiftMsg(null);
+    if (!giftCode.trim()) return;
+    setCheckingGift(true);
+    const res = await checkGiftCard({ organizationId: org.id, code: giftCode });
+    setCheckingGift(false);
+    setGiftMsg(
+      res.ok
+        ? `✓ Saldo disponible: ${formatMoney(res.balanceCents, currency)}. Lo usás al pagar en el salón.`
+        : res.error,
+    );
+  }
 
   function toggleService(id: string) {
     setServiceIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -136,6 +176,7 @@ export function BookingWizard({
       serviceIds,
       startIso: slot.startIso,
       client: { name, phone, email, referralCode },
+      promoCode: promo ? promoCode : "",
       captchaToken,
     });
     setSubmitting(false);
@@ -167,6 +208,12 @@ export function BookingWizard({
           <Row label="Fecha" value={`${partsOf(date!).weekday} ${partsOf(date!).day} ${partsOf(date!).month}`} />
           <Row label="Hora" value={slot.label} />
           <Row label="Precio" value={formatMoney(totalPrice, currency)} />
+          {discount > 0 && (
+            <>
+              <Row label={`Descuento${promo ? ` (${promo.name})` : ""}`} value={`−${formatMoney(discount, currency)}`} />
+              <Row label="Total" value={formatMoney(totalFinal, currency)} />
+            </>
+          )}
           <Row label="Código" value={result.bookingCode} />
         </div>
         <div className="mt-6 flex flex-col gap-3">
@@ -299,8 +346,56 @@ export function BookingWizard({
             <Row label="Hora" value={slot.label} />
             <Row label="Duración" value={`${totalDuration} min`} />
             <Row label="Precio" value={formatMoney(totalPrice, currency)} />
+            {discount > 0 && (
+              <>
+                <Row label={`Descuento${promo ? ` (${promo.name})` : ""}`} value={`−${formatMoney(discount, currency)}`} />
+                <div className="flex justify-between gap-4 border-t border-border pt-2 font-semibold">
+                  <span className="text-foreground">Total</span>
+                  <span className="text-primary">{formatMoney(totalFinal, currency)}</span>
+                </div>
+              </>
+            )}
             {totalDeposit > 0 && <Row label="Seña requerida" value={formatMoney(totalDeposit, currency)} />}
           </div>
+
+          {/* Beneficios: promo (aplica descuento) + gift card (saldo informativo) */}
+          <div className="mt-4 space-y-3 rounded-2xl border border-border bg-card p-4">
+            <div className="flex items-center gap-2 text-sm font-medium"><Tag className="size-4 text-primary" /> ¿Tenés un código de promo?</div>
+            <div className="flex gap-2">
+              <Input
+                value={promoCode}
+                onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromo(null); setPromoMsg(null); }}
+                placeholder="CÓDIGO"
+                className="flex-1"
+              />
+              <Button type="button" variant="outline" onClick={applyPromo} disabled={checkingPromo || !promoCode.trim()}>
+                {checkingPromo ? <Loader2 className="size-4 animate-spin" /> : "Aplicar"}
+              </Button>
+            </div>
+            {promoMsg && <p className={cn("text-sm", promo ? "text-primary" : "text-destructive")}>{promoMsg}</p>}
+
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground">
+                <Gift className="size-4" /> Tengo una gift card
+              </summary>
+              <div className="mt-2 flex gap-2">
+                <Input
+                  value={giftCode}
+                  onChange={(e) => { setGiftCode(e.target.value.toUpperCase()); setGiftMsg(null); }}
+                  placeholder="CÓDIGO GIFT CARD"
+                  className="flex-1"
+                />
+                <Button type="button" variant="outline" onClick={applyGift} disabled={checkingGift || !giftCode.trim()}>
+                  {checkingGift ? <Loader2 className="size-4 animate-spin" /> : "Ver saldo"}
+                </Button>
+              </div>
+              {giftMsg && <p className="mt-2 text-sm text-muted-foreground">{giftMsg}</p>}
+              <p className="mt-2 text-xs text-muted-foreground">
+                Las gift cards y los packs se descuentan al pagar en el salón.
+              </p>
+            </details>
+          </div>
+
           {cancellationWindowHours > 0 && (
             <p className="mt-3 text-center text-xs text-muted-foreground">
               Podés cancelar sin cargo hasta {cancellationWindowHours} h antes del turno.

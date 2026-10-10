@@ -6,7 +6,7 @@ import { ImagePlus, Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadImage, removeImage } from "./actions";
 
-type Target = "org-logo" | "org-cover" | "service" | "professional";
+type Target = "org-logo" | "org-cover" | "service" | "professional" | "nail-before" | "nail-after";
 
 export function ImageUploader({
   target,

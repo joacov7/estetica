@@ -17,6 +17,7 @@ import { createBookingToken } from "@/lib/booking-token";
 import { bookingLimiter, clientIp } from "@/lib/rate-limit";
 import { verifyCaptcha } from "@/lib/captcha";
 import { generateReferralCode } from "@/lib/referral";
+import { resolvePromoForBooking } from "./promo-actions";
 
 export type BookingResult =
   | { ok: true; bookingCode: string; manageToken: string }
@@ -101,6 +102,9 @@ export async function createPublicBooking(input: BookingInput): Promise<BookingR
   const startAt = new Date(data.startIso).toISOString();
   const endAt = new Date(new Date(data.startIso).getTime() + slotLength * 60000).toISOString();
 
+  // --- promo code (optional) ----------------------------------------------
+  const promo = await resolvePromoForBooking(data.organizationId, data.promoCode, data.serviceIds);
+
   // --- resolve referrer (only applies to brand-new clients) ----------------
   let referredById: string | null = null;
   const refCode = data.client.referralCode?.trim().toUpperCase();
@@ -146,6 +150,8 @@ export async function createPublicBooking(input: BookingInput): Promise<BookingR
             status: "reservado",
             source: "online",
             bookingCode,
+            promotionId: promo?.promotionId ?? null,
+            discountCents: promo?.discountCents ?? 0,
           })
           .returning({ id: appointments.id });
 

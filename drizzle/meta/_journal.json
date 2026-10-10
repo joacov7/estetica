@@ -50,6 +50,13 @@
       "when": 1790277885868,
       "tag": "0006_marketing",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791596506500,
+      "tag": "0007_checkout_discounts",
+      "breakpoints": true
     }
   ]
 }

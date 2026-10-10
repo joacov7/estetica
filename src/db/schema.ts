@@ -302,6 +302,9 @@ export const appointments = pgTable(
     source: appointmentSource("source").notNull().default("manual"),
     bookingCode: text("booking_code").notNull().unique(),
     notes: text("notes"),
+    // Promo applied at online checkout (informational for staff + reporting).
+    promotionId: uuid("promotion_id").references(() => promotions.id, { onDelete: "set null" }),
+    discountCents: integer("discount_cents").notNull().default(0),
     createdAt: ts(),
   },
   (t) => [

@@ -4,14 +4,21 @@ import { put } from "@vercel/blob";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { organizations, services, professionals } from "@/db/schema";
+import { organizations, services, professionals, nailRecords } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
+import { blobConfigured } from "@/lib/blob";
 
-export const blobConfigured = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-
-type Target = "org-logo" | "org-cover" | "service" | "professional";
+type Target = "org-logo" | "org-cover" | "service" | "professional" | "nail-before" | "nail-after";
 const WRITE_ROLES = ["owner", "admin"];
+// Nail photos can also be managed by professionals (the person doing the work).
+const NAIL_ROLES = ["owner", "admin", "professional"];
 const MAX_BYTES = 5 * 1024 * 1024;
+
+function canWrite(target: Target, role: string | null | undefined): boolean {
+  if (!role) return false;
+  if (target === "nail-before" || target === "nail-after") return NAIL_ROLES.includes(role);
+  return WRITE_ROLES.includes(role);
+}
 
 async function persist(target: Target, targetId: string | null, url: string | null, orgId: string) {
   switch (target) {
@@ -27,6 +34,12 @@ async function persist(target: Target, targetId: string | null, url: string | nu
     case "professional":
       if (targetId) await db.update(professionals).set({ photoUrl: url }).where(and(eq(professionals.id, targetId), eq(professionals.organizationId, orgId)));
       break;
+    case "nail-before":
+      if (targetId) await db.update(nailRecords).set({ photoBeforeUrl: url }).where(and(eq(nailRecords.id, targetId), eq(nailRecords.organizationId, orgId)));
+      break;
+    case "nail-after":
+      if (targetId) await db.update(nailRecords).set({ photoAfterUrl: url }).where(and(eq(nailRecords.id, targetId), eq(nailRecords.organizationId, orgId)));
+      break;
   }
 }
 
@@ -35,11 +48,11 @@ export type UploadResult = { ok: true; url: string } | { ok: false; error: strin
 /** Upload an image to Vercel Blob and save its URL on the target entity. */
 export async function uploadImage(formData: FormData): Promise<UploadResult> {
   const { org, role } = await getCurrentOrg();
-  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false, error: "No autorizado" };
+  const target = String(formData.get("target") || "") as Target;
+  if (!org || !canWrite(target, role)) return { ok: false, error: "No autorizado" };
   if (!blobConfigured) return { ok: false, error: "La subida de imágenes no está configurada (falta Vercel Blob)." };
 
   const file = formData.get("file");
-  const target = String(formData.get("target") || "") as Target;
   const targetId = (formData.get("targetId") as string) || null;
 
   if (!(file instanceof File) || file.size === 0) return { ok: false, error: "Archivo inválido" };
@@ -65,7 +78,7 @@ export async function uploadImage(formData: FormData): Promise<UploadResult> {
 
 export async function removeImage(target: Target, targetId: string | null): Promise<{ ok: boolean }> {
   const { org, role } = await getCurrentOrg();
-  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false };
+  if (!org || !canWrite(target, role)) return { ok: false };
   await persist(target, targetId, null, org.id);
   revalidatePath("/dashboard/configuracion");
   revalidatePath("/dashboard/servicios");
