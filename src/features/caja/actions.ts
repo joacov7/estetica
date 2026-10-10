@@ -6,14 +6,16 @@ import { payments } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
 import { paymentFormSchema, type PaymentFormInput } from "@/lib/validations/payment";
 
+const WRITE_ROLES = ["owner", "admin"];
+
 /** Record a cash-register movement (payment/deposit/tip/refund). */
 export async function recordPayment(input: PaymentFormInput) {
   const parsed = paymentFormSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
-  const { org } = await getCurrentOrg();
-  if (!org) return { ok: false as const, error: "No autorizado" };
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false as const, error: "No autorizado" };
 
   const v = parsed.data;
   await db.insert(payments).values({

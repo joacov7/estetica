@@ -42,8 +42,8 @@ export async function togglePack(id: string, isActive: boolean) {
 
 /** Sell a pack template to a client — creates a client_pack snapshot. */
 export async function sellPack(packId: string, clientId: string) {
-  const { org } = await getCurrentOrg();
-  if (!org) return { ok: false as const, error: "No autorizado" };
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false as const, error: "No autorizado" };
 
   const [pack] = await db
     .select()
@@ -74,8 +74,8 @@ export async function sellPack(packId: string, clientId: string) {
 
 /** Use one credit of a client's pack (atomic decrement, never below zero). */
 export async function usePack(clientPackId: string) {
-  const { org } = await getCurrentOrg();
-  if (!org) return { ok: false as const, error: "No autorizado" };
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false as const, error: "No autorizado" };
 
   // remaining_qty = remaining_qty - 1, guarded by WHERE remaining_qty > 0.
   const updated = await db

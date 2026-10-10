@@ -31,13 +31,15 @@ const ALLOWED: AppointmentStatus[] = [
   "no_show",
 ];
 
+const WRITE_ROLES = ["owner", "admin"];
+
 /** Change an appointment's status (scoped to the caller's organization). */
 export async function updateAppointmentStatus(id: string, status: AppointmentStatus) {
   if (!ALLOWED.includes(status)) {
     return { ok: false as const, error: "Estado inválido" };
   }
-  const { org } = await getCurrentOrg();
-  if (!org) return { ok: false as const, error: "No autorizado" };
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false as const, error: "No autorizado" };
 
   await db
     .update(appointments)
@@ -67,8 +69,8 @@ export async function createManualAppointment(
   }
   const data = parsed.data;
 
-  const { org } = await getCurrentOrg();
-  if (!org) return { ok: false, error: "No autorizado" };
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false, error: "No autorizado" };
 
   const svc = await db
     .select({

@@ -1,20 +1,22 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { giftCards } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
 import { generateReferralCode } from "@/lib/referral";
 import { giftCardSchema, redeemGiftCardSchema, type GiftCardInput } from "@/lib/validations/loyalty";
 
+const WRITE_ROLES = ["owner", "admin"];
+
 export async function createGiftCard(input: GiftCardInput) {
   const parsed = giftCardSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
-  const { org } = await getCurrentOrg();
-  if (!org) return { ok: false as const, error: "No autorizado" };
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false as const, error: "No autorizado" };
 
   const cents = Math.round(parsed.data.amount * 100);
   // Try a few codes in case of a collision with the per-org unique constraint.
@@ -43,25 +45,35 @@ export async function createGiftCard(input: GiftCardInput) {
 export async function redeemGiftCard(input: { giftCardId: string; amount: number }) {
   const parsed = redeemGiftCardSchema.safeParse(input);
   if (!parsed.success) return { ok: false as const, error: "Datos inválidos" };
-  const { org } = await getCurrentOrg();
-  if (!org) return { ok: false as const, error: "No autorizado" };
-
-  const [card] = await db
-    .select()
-    .from(giftCards)
-    .where(and(eq(giftCards.id, parsed.data.giftCardId), eq(giftCards.organizationId, org.id)))
-    .limit(1);
-  if (!card) return { ok: false as const, error: "Gift card no encontrada" };
-  if (card.status !== "active") return { ok: false as const, error: "Esta gift card no está activa." };
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false as const, error: "No autorizado" };
 
   const cents = Math.round(parsed.data.amount * 100);
-  if (cents > card.balanceCents) return { ok: false as const, error: "El monto supera el saldo." };
+  if (cents <= 0) return { ok: false as const, error: "Monto inválido" };
 
-  const newBalance = card.balanceCents - cents;
-  await db
+  // Atomic debit: the WHERE guards against double-spend under concurrency.
+  // balance - cents is computed in SQL, so two concurrent redeems can't both
+  // read a stale balance (no lost update).
+  const [updated] = await db
     .update(giftCards)
-    .set({ balanceCents: newBalance, status: newBalance === 0 ? "redeemed" : "active" })
-    .where(eq(giftCards.id, card.id));
+    .set({
+      balanceCents: sql`${giftCards.balanceCents} - ${cents}`,
+      status: sql`CASE WHEN ${giftCards.balanceCents} - ${cents} = 0 THEN 'redeemed' ELSE ${giftCards.status} END`,
+    })
+    .where(
+      and(
+        eq(giftCards.id, parsed.data.giftCardId),
+        eq(giftCards.organizationId, org.id),
+        eq(giftCards.status, "active"),
+        gte(giftCards.balanceCents, cents),
+      ),
+    )
+    .returning({ id: giftCards.id });
+
+  if (!updated) {
+    // Either not found/inactive or insufficient balance — don't leak which.
+    return { ok: false as const, error: "No se pudo canjear: saldo insuficiente o gift card inactiva." };
+  }
 
   revalidatePath("/dashboard/gift-cards");
   return { ok: true as const };

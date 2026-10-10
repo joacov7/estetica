@@ -6,6 +6,8 @@ import { db } from "@/db";
 import { appointments, appointmentServices, organizations } from "@/db/schema";
 import { verifyBookingToken } from "@/lib/booking-token";
 import { getAvailableSlots } from "@/services/availability";
+import { getOrgSettings } from "@/lib/settings";
+import { canModifyByClient } from "./cancellation";
 
 export type ManageResult = { ok: true } | { ok: false; error: string; slotTaken?: boolean };
 
@@ -27,6 +29,16 @@ export async function cancelAppointmentByToken(token: string): Promise<ManageRes
   if (appt.status === "cancelado") return { ok: true };
   if (appt.status === "atendido") return { ok: false, error: "Este turno ya fue atendido." };
 
+  // Enforce the business's free-cancellation window on the server (the client
+  // UI is advisory only).
+  const settings = await getOrgSettings(appt.organizationId);
+  if (!canModifyByClient(Date.now(), new Date(appt.startAt).getTime(), settings.cancellationWindowHours)) {
+    return {
+      ok: false,
+      error: `Ya pasó el plazo para cancelar online (hasta ${settings.cancellationWindowHours} h antes). Escribinos para coordinar.`,
+    };
+  }
+
   await db.update(appointments).set({ status: "cancelado" }).where(eq(appointments.id, appt.id));
   return { ok: true };
 }
@@ -36,6 +48,15 @@ export async function rescheduleAppointmentByToken(token: string, newStartIso: s
   if (!appt) return { ok: false, error: "Enlace inválido." };
   if (appt.status === "cancelado" || appt.status === "atendido") {
     return { ok: false, error: "Este turno no se puede reprogramar." };
+  }
+
+  // Can't reschedule online once inside the free-cancellation window.
+  const settings = await getOrgSettings(appt.organizationId);
+  if (!canModifyByClient(Date.now(), new Date(appt.startAt).getTime(), settings.cancellationWindowHours)) {
+    return {
+      ok: false,
+      error: `Ya pasó el plazo para reprogramar online (hasta ${settings.cancellationWindowHours} h antes). Escribinos para coordinar.`,
+    };
   }
 
   const [org] = await db
