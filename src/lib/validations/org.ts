@@ -64,6 +64,14 @@ export const integrationsSettingsSchema = z.object({
 
 export type IntegrationsSettingsInput = z.infer<typeof integrationsSettingsSchema>;
 
+export const loyaltySettingsSchema = z.object({
+  loyaltyEnabled: z.boolean(),
+  loyaltyEarnPer: z.coerce.number().min(1, "Debe ser mayor a 0"), // pesos → 1 punto
+  loyaltyPointValue: z.coerce.number().min(0), // pesos que vale 1 punto
+});
+
+export type LoyaltySettingsInput = z.infer<typeof loyaltySettingsSchema>;
+
 export const marketingSettingsSchema = z.object({
   reviewsEnabled: z.boolean(),
   reviewRequestEnabled: z.boolean(),

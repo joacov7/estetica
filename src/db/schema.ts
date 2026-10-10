@@ -440,6 +440,33 @@ export const clientPacks = pgTable(
   (t) => [index("client_packs_org_client_idx").on(t.organizationId, t.clientId)],
 );
 
+/**
+ * Loyalty points ledger. Balance = sum(points) per client. Positive entries
+ * are earned (one 'earn' per appointment, enforced by a unique index),
+ * negative entries are redemptions or manual adjustments.
+ */
+export const loyaltyTransactions = pgTable(
+  "loyalty_transactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id")
+      .notNull()
+      .references(() => clients.id, { onDelete: "cascade" }),
+    points: integer("points").notNull(), // + earned, - redeemed/adjusted
+    kind: text("kind").notNull(), // earn | redeem | adjust
+    reason: text("reason"),
+    appointmentId: uuid("appointment_id").references(() => appointments.id, { onDelete: "set null" }),
+    createdAt: ts(),
+  },
+  (t) => [
+    index("loyalty_org_client_idx").on(t.organizationId, t.clientId),
+    unique("loyalty_earn_once").on(t.appointmentId, t.kind),
+  ],
+);
+
 // --- growth (schema-ready) --------------------------------------------------
 export const promotions = pgTable(
   "promotions",
@@ -559,6 +586,7 @@ export type User = typeof users.$inferSelect;
 
 export type Review = typeof reviews.$inferSelect;
 export type Campaign = typeof campaigns.$inferSelect;
+export type LoyaltyTransaction = typeof loyaltyTransactions.$inferSelect;
 
 export type AppointmentStatus = (typeof appointmentStatus.enumValues)[number];
 export type MemberRole = (typeof memberRole.enumValues)[number];

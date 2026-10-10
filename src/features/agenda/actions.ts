@@ -9,6 +9,7 @@ import { getCurrentOrg } from "@/features/org/current";
 import { getAvailableSlots } from "@/services/availability";
 import { manualBookingSchema, type ManualBookingInput } from "@/lib/validations/booking";
 import { generateReferralCode } from "@/lib/referral";
+import { awardPointsForAppointment } from "@/features/loyalty/points";
 import type { AppointmentStatus } from "@/db/schema";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -42,6 +43,11 @@ export async function updateAppointmentStatus(id: string, status: AppointmentSta
     .update(appointments)
     .set({ status })
     .where(and(eq(appointments.id, id), eq(appointments.organizationId, org.id)));
+
+  // Award loyalty points once the appointment is attended (idempotent).
+  if (status === "atendido") {
+    await awardPointsForAppointment(org.id, id);
+  }
 
   revalidatePath("/dashboard/agenda");
   return { ok: true as const };

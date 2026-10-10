@@ -4,13 +4,16 @@ import { ChevronLeft, Phone, Mail, Cake } from "lucide-react";
 import { formatInTimeZone } from "date-fns-tz";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { clients, appointments, appointmentServices, clientNotes, servicePacks, clientPacks, nailRecords } from "@/db/schema";
+import { clients, appointments, appointmentServices, clientNotes, servicePacks, clientPacks, nailRecords, loyaltyTransactions } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
+import { getOrgSettings } from "@/lib/settings";
+import { getPointsBalance } from "@/features/loyalty/points";
 import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/money";
 import { NoteForm } from "@/features/clients/note-form";
 import { ReferralLink } from "@/features/referrals/referral-link";
 import { ClientPacks } from "@/features/loyalty/client-packs";
+import { LoyaltyPanel } from "@/features/loyalty/loyalty-panel";
 import { NailRecords } from "@/features/nails/nail-records";
 import { blobConfigured } from "@/lib/blob";
 import type { AppointmentStatus } from "@/db/schema";
@@ -118,6 +121,17 @@ export default async function ClientDetailPage({
     }
   }
 
+  const [settings, loyaltyBalance, loyaltyTx] = await Promise.all([
+    getOrgSettings(org.id),
+    getPointsBalance(org.id, id),
+    db
+      .select({ points: loyaltyTransactions.points, kind: loyaltyTransactions.kind, reason: loyaltyTransactions.reason, createdAt: loyaltyTransactions.createdAt })
+      .from(loyaltyTransactions)
+      .where(and(eq(loyaltyTransactions.clientId, id), eq(loyaltyTransactions.organizationId, org.id)))
+      .orderBy(desc(loyaltyTransactions.createdAt))
+      .limit(15),
+  ]);
+
   const currency = { currency: org.currency, locale: org.locale };
   const netOf = (a: (typeof appts)[number]) =>
     Math.max(0, (svcByAppt.get(a.id)?.total ?? 0) - (a.discountCents ?? 0));
@@ -217,6 +231,20 @@ export default async function ClientDetailPage({
               )}
             </div>
           </div>
+
+          {settings.loyaltyEnabled && (
+            <div>
+              <h2 className="mb-3 font-display text-lg font-semibold">Puntos de fidelidad</h2>
+              <LoyaltyPanel
+                clientId={client.id}
+                balance={loyaltyBalance}
+                pointValueCents={settings.loyaltyPointValueCents}
+                currency={currency}
+                transactions={loyaltyTx}
+                timezone={org.timezone}
+              />
+            </div>
+          )}
 
           <div>
             <h2 className="mb-3 font-display text-lg font-semibold">Packs</h2>

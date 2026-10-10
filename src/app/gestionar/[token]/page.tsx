@@ -6,6 +6,9 @@ import { db } from "@/db";
 import { appointments, appointmentServices, organizations, professionals, clients } from "@/db/schema";
 import { verifyBookingToken } from "@/lib/booking-token";
 import { getOrgSettings } from "@/lib/settings";
+import { getPointsBalance } from "@/features/loyalty/points";
+import { formatMoney } from "@/lib/money";
+import { Sparkles } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { ManageClient } from "@/features/booking/manage-client";
 
@@ -24,7 +27,7 @@ export default async function ManagePage({ params }: { params: Promise<{ token: 
   if (!appt) return <Invalid />;
 
   const [org] = await db
-    .select({ id: organizations.id, slug: organizations.slug, name: organizations.name, timezone: organizations.timezone })
+    .select({ id: organizations.id, slug: organizations.slug, name: organizations.name, timezone: organizations.timezone, currency: organizations.currency, locale: organizations.locale })
     .from(organizations)
     .where(eq(organizations.id, appt.organizationId))
     .limit(1);
@@ -37,6 +40,8 @@ export default async function ManagePage({ params }: { params: Promise<{ token: 
     getOrgSettings(appt.organizationId),
   ]);
 
+  const points = settings.loyaltyEnabled && appt.clientId ? await getPointsBalance(org.id, appt.clientId) : 0;
+
   const serviceIds = svcRows.filter((s) => s.serviceId).map((s) => s.serviceId!) as string[];
   const serviceNames = svcRows.map((s) => s.name);
   const dateLabel = formatInTimeZone(appt.startAt, org.timezone, "EEEE dd/MM");
@@ -48,6 +53,18 @@ export default async function ManagePage({ params }: { params: Promise<{ token: 
         {org.name}
       </Link>
       <h1 className="mt-2 font-display text-2xl font-semibold">Tu turno</h1>
+
+      {points > 0 && (
+        <div className="mt-4 flex items-center gap-2 rounded-2xl border border-border bg-secondary/40 p-3 text-sm">
+          <Sparkles className="size-4 text-primary" />
+          <span>
+            Tenés <strong>{points} puntos</strong> acumulados
+            {settings.loyaltyPointValueCents > 0 && (
+              <> · equivalen a {formatMoney(points * settings.loyaltyPointValueCents, { currency: org.currency, locale: org.locale })} de descuento</>
+            )}
+          </span>
+        </div>
+      )}
 
       {appt.status === "cancelado" ? (
         <div className="mt-6 flex flex-col items-center gap-2 rounded-2xl border border-border bg-card p-8 text-center">

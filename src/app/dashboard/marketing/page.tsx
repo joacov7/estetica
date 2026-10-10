@@ -1,9 +1,10 @@
 import { and, count, eq, gte, isNotNull, sum } from "drizzle-orm";
 import { formatInTimeZone, fromZonedTime } from "date-fns-tz";
-import { Star, Megaphone, HeartHandshake, Gift, Cake, Tag, Users } from "lucide-react";
+import { Star, Megaphone, HeartHandshake, Gift, Cake, Tag, Users, Sparkles } from "lucide-react";
 import { db } from "@/db";
-import { reviews, campaigns, notifications, clients, appointments } from "@/db/schema";
+import { reviews, campaigns, notifications, clients, appointments, loyaltyTransactions } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
+import { getOrgSettings } from "@/lib/settings";
 import { StatCard } from "@/components/ui/stat-card";
 import { formatMoney } from "@/lib/money";
 
@@ -43,6 +44,9 @@ export default async function MarketingPage() {
     referredRows,
     attendedRows,
     [promoAgg],
+    settings,
+    [loyaltyOutstanding],
+    [loyaltyRedeemed],
   ] = await Promise.all([
     db.select({ rating: reviews.rating, status: reviews.status, createdAt: reviews.createdAt }).from(reviews).where(eq(reviews.organizationId, org.id)),
     db.select({ sentCount: campaigns.sentCount, sentAt: campaigns.sentAt }).from(campaigns).where(and(eq(campaigns.organizationId, org.id), eq(campaigns.status, "sent"))),
@@ -54,6 +58,9 @@ export default async function MarketingPage() {
     db.select({ id: clients.id }).from(clients).where(and(eq(clients.organizationId, org.id), isNotNull(clients.referredById))),
     db.selectDistinct({ clientId: appointments.clientId }).from(appointments).where(and(eq(appointments.organizationId, org.id), eq(appointments.status, "atendido"))),
     db.select({ c: count(), total: sum(appointments.discountCents) }).from(appointments).where(and(eq(appointments.organizationId, org.id), gte(appointments.discountCents, 1))),
+    getOrgSettings(org.id),
+    db.select({ total: sum(loyaltyTransactions.points) }).from(loyaltyTransactions).where(eq(loyaltyTransactions.organizationId, org.id)),
+    db.select({ total: sum(loyaltyTransactions.points) }).from(loyaltyTransactions).where(and(eq(loyaltyTransactions.organizationId, org.id), eq(loyaltyTransactions.kind, "redeem"))),
   ]);
 
   // Reviews
@@ -88,6 +95,10 @@ export default async function MarketingPage() {
   // Promos
   const promoCount = promoAgg?.c ?? 0;
   const promoTotal = Number(promoAgg?.total ?? 0);
+
+  // Loyalty
+  const pointsOutstanding = Number(loyaltyOutstanding?.total ?? 0);
+  const pointsRedeemed = Math.abs(Number(loyaltyRedeemed?.total ?? 0));
 
   return (
     <div className="space-y-6">
@@ -138,6 +149,17 @@ export default async function MarketingPage() {
         <StatCard label="Turnos con promo" value={String(promoCount)} icon={Tag} />
         <StatCard label="Descuento total otorgado" value={formatMoney(promoTotal, currency)} icon={Gift} />
       </div>
+
+      {settings.loyaltyEnabled && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StatCard
+            label="Puntos activos (sin canjear)"
+            value={`${pointsOutstanding} · ${formatMoney(pointsOutstanding * settings.loyaltyPointValueCents, currency)}`}
+            icon={Sparkles}
+          />
+          <StatCard label="Puntos canjeados" value={String(pointsRedeemed)} icon={Gift} />
+        </div>
+      )}
 
       <p className="text-sm text-muted-foreground">
         Los envíos automáticos requieren tener Resend configurado. Si recién empezás, estos números se

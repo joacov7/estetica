@@ -52,6 +52,14 @@ export interface OrgSettings {
   googleRating: number;
   /** Manually-entered Google review count to show on the page. */
   googleReviewCount: number;
+
+  // --- loyalty points -------------------------------------------------------
+  /** Enable the loyalty points program. */
+  loyaltyEnabled: boolean;
+  /** Amount (in cents) a client must spend to earn 1 point. */
+  loyaltyEarnPerCents: number;
+  /** Value (in cents) of 1 point when redeemed. */
+  loyaltyPointValueCents: number;
 }
 
 export const DEFAULT_SETTINGS: OrgSettings = {
@@ -75,6 +83,9 @@ export const DEFAULT_SETTINGS: OrgSettings = {
   googlePlaceUrl: "",
   googleRating: 0,
   googleReviewCount: 0,
+  loyaltyEnabled: false,
+  loyaltyEarnPerCents: 100000, // 1 punto cada $1000
+  loyaltyPointValueCents: 100, // 1 punto = $1
 };
 
 export async function getOrgSettings(organizationId: string): Promise<OrgSettings> {

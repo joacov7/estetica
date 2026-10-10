@@ -14,6 +14,7 @@ import {
   costSettingsSchema,
   marketingSettingsSchema,
   integrationsSettingsSchema,
+  loyaltySettingsSchema,
   type OrgProfileInput,
   type BusinessHoursInput,
   type BookingSettingsInput,
@@ -21,6 +22,7 @@ import {
   type CostSettingsInput,
   type MarketingSettingsInput,
   type IntegrationsSettingsInput,
+  type LoyaltySettingsInput,
 } from "@/lib/validations/org";
 
 const WRITE_ROLES = ["owner", "admin"];
@@ -185,6 +187,31 @@ export async function updateIntegrationsSettings(input: IntegrationsSettingsInpu
 
   revalidatePath("/dashboard/configuracion");
   revalidatePath(`/${org.slug}`);
+  return { ok: true as const };
+}
+
+export async function updateLoyaltySettings(input: LoyaltySettingsInput) {
+  const parsed = loyaltySettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false as const, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+  }
+  const { org, role } = await getCurrentOrg();
+  if (!org || !role || !WRITE_ROLES.includes(role)) {
+    return { ok: false as const, error: "No autorizado" };
+  }
+  const current = await getOrgSettings(org.id);
+  const data = {
+    ...current,
+    loyaltyEnabled: parsed.data.loyaltyEnabled,
+    loyaltyEarnPerCents: Math.round(parsed.data.loyaltyEarnPer * 100),
+    loyaltyPointValueCents: Math.round(parsed.data.loyaltyPointValue * 100),
+  };
+  await db
+    .insert(settings)
+    .values({ organizationId: org.id, data })
+    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
+
+  revalidatePath("/dashboard/configuracion");
   return { ok: true as const };
 }
 
