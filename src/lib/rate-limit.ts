@@ -58,8 +58,6 @@ function makeLimiter(limit: number, windowMs: number, prefix: string): RateLimit
     : new MemoryRateLimiter(limit, windowMs);
 }
 
-export const isRedisRateLimiting = redis !== null;
-
 /** Public booking: 5 attempts / 10 min per IP+phone. */
 export const bookingLimiter = makeLimiter(5, 10 * MIN, "booking");
 /** Login: 10 attempts / 10 min per IP — blunts credential brute force. */

@@ -17,25 +17,13 @@ import { createBookingToken } from "@/lib/booking-token";
 import { bookingLimiter, clientIp } from "@/lib/rate-limit";
 import { verifyCaptcha } from "@/lib/captcha";
 import { generateReferralCode } from "@/lib/referral";
+import { generateBookingCode, pgCode } from "@/lib/booking-code";
 import { logError } from "@/lib/logger";
 import { resolvePromoForBooking } from "./promo-actions";
 
 export type BookingResult =
   | { ok: true; bookingCode: string; manageToken: string }
   | { ok: false; error: string; slotTaken?: boolean };
-
-const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-function generateCode(): string {
-  let code = "";
-  for (let i = 0; i < 6; i++) code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-  return code;
-}
-
-/** Extract a Postgres SQLSTATE code from a thrown error (postgres.js / drizzle). */
-function pgCode(e: unknown): string | undefined {
-  const err = e as { code?: string; cause?: { code?: string } };
-  return err?.code ?? err?.cause?.code;
-}
 
 /**
  * Create a booking from the public (anonymous) flow.
@@ -120,7 +108,7 @@ export async function createPublicBooking(input: BookingInput): Promise<BookingR
 
   // --- create booking atomically, retrying only on code collision ----------
   for (let attempt = 0; attempt < 4; attempt++) {
-    const bookingCode = generateCode();
+    const bookingCode = generateBookingCode();
     try {
       const appointmentId = await db.transaction(async (tx) => {
         const [client] = await tx

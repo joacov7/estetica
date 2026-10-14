@@ -70,9 +70,13 @@ export default async function MarketingPage() {
 
   // Reviews per month (last 6 months, published)
   const months: { key: string; label: string; count: number }[] = [];
+  // Anchor to the 1st of the current month before subtracting, so day-of-month
+  // overflow (e.g. Mar 31 − 1 month) can't skip or duplicate a bucket.
+  const anchor = new Date();
+  anchor.setUTCDate(1);
   for (let i = 5; i >= 0; i--) {
-    const d = new Date();
-    d.setUTCMonth(d.getUTCMonth() - i);
+    const d = new Date(anchor);
+    d.setUTCMonth(anchor.getUTCMonth() - i);
     const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
     months.push({ key, label: MONTHS[d.getUTCMonth()], count: 0 });
   }

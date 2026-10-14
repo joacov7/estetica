@@ -9,8 +9,6 @@ import "server-only";
  */
 const SECRET = process.env.TURNSTILE_SECRET_KEY;
 
-export const captchaEnabled = Boolean(SECRET);
-
 export async function verifyCaptcha(token: string | undefined, ip: string): Promise<boolean> {
   if (!SECRET) return true; // not configured → skip
   if (!token) return false;

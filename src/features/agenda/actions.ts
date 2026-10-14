@@ -9,19 +9,9 @@ import { getCurrentOrg } from "@/features/org/current";
 import { getAvailableSlots } from "@/services/availability";
 import { manualBookingSchema, type ManualBookingInput } from "@/lib/validations/booking";
 import { generateReferralCode } from "@/lib/referral";
+import { generateBookingCode, pgCode } from "@/lib/booking-code";
 import { awardPointsForAppointment } from "@/features/loyalty/points";
 import type { AppointmentStatus } from "@/db/schema";
-
-const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-function generateCode(): string {
-  let code = "";
-  for (let i = 0; i < 6; i++) code += ALPHABET[Math.floor(Math.random() * ALPHABET.length)];
-  return code;
-}
-function pgCode(e: unknown): string | undefined {
-  const err = e as { code?: string; cause?: { code?: string } };
-  return err?.code ?? err?.cause?.code;
-}
 
 const ALLOWED: AppointmentStatus[] = [
   "reservado",
@@ -105,7 +95,7 @@ export async function createManualAppointment(
   const endAt = new Date(new Date(data.startIso).getTime() + slotLength * 60000).toISOString();
 
   for (let attempt = 0; attempt < 4; attempt++) {
-    const bookingCode = generateCode();
+    const bookingCode = generateBookingCode();
     try {
       await db.transaction(async (tx) => {
         const [client] = await tx
