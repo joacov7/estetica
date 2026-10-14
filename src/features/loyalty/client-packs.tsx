@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { sellPack, usePack } from "./pack-actions";
+import { sellPack, consumePack } from "./pack-actions";
 
 type Template = { id: string; name: string; quantity: number };
 type ClientPack = { id: string; name: string; remainingQty: number; totalQty: number };
@@ -35,7 +35,7 @@ export function ClientPacks({
   }
 
   function use(id: string) {
-    start(async () => { await usePack(id); router.refresh(); });
+    start(async () => { await consumePack(id); router.refresh(); });
   }
 
   return (

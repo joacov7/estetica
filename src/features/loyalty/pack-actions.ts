@@ -73,7 +73,7 @@ export async function sellPack(packId: string, clientId: string) {
 }
 
 /** Use one credit of a client's pack (atomic decrement, never below zero). */
-export async function usePack(clientPackId: string) {
+export async function consumePack(clientPackId: string) {
   const { org, role } = await getCurrentOrg();
   if (!org || !role || !WRITE_ROLES.includes(role)) return { ok: false as const, error: "No autorizado" };
 
