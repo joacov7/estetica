@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { campaigns } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
 import { emailConfigured } from "@/services/notifications/email";
-import { segmentCounts, SEGMENT_LABEL, type Segment } from "@/features/campaigns/recipients";
+import { segmentCountsByChannel, SEGMENT_LABEL, type Segment } from "@/features/campaigns/recipients";
 import { CampaignComposer } from "@/features/campaigns/campaign-composer";
 import { getOrgSettings } from "@/lib/settings";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +15,13 @@ export default async function CampanasPage() {
   const { org } = await getCurrentOrg();
   if (!org) return <p className="text-muted-foreground">Todavía no tenés un negocio.</p>;
 
-  const [emailCounts, waCounts, settings, history] = await Promise.all([
-    segmentCounts(org.id, "email"),
-    segmentCounts(org.id, "whatsapp"),
+  const [counts, settings, history] = await Promise.all([
+    segmentCountsByChannel(org.id),
     getOrgSettings(org.id),
     db.select().from(campaigns).where(eq(campaigns.organizationId, org.id)).orderBy(desc(campaigns.createdAt)).limit(30),
   ]);
+  const emailCounts = counts.email;
+  const waCounts = counts.whatsapp;
 
   return (
     <div className="space-y-6">

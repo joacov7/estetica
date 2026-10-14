@@ -5,7 +5,7 @@ import { and, eq, isNull, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { organizations, reservedSlugs, businessHours, settings } from "@/db/schema";
 import { getCurrentOrg } from "@/features/org/current";
-import { getOrgSettings } from "@/lib/settings";
+import { getOrgSettings, type OrgSettings } from "@/lib/settings";
 import {
   orgProfileSchema,
   businessHoursSchema,
@@ -26,6 +26,15 @@ import {
 } from "@/lib/validations/org";
 
 const WRITE_ROLES = ["owner", "admin"];
+
+/** Merge a patch into the org's jsonb settings (preserving other keys). */
+async function saveOrgSettings(orgId: string, patch: Partial<OrgSettings>) {
+  const data = { ...(await getOrgSettings(orgId)), ...patch };
+  await db
+    .insert(settings)
+    .values({ organizationId: orgId, data })
+    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
+}
 
 export async function updateOrgProfile(input: OrgProfileInput) {
   const parsed = orgProfileSchema.safeParse(input);
@@ -79,14 +88,7 @@ export async function updateBookingSettings(input: BookingSettingsInput) {
     return { ok: false as const, error: "No autorizado" };
   }
 
-  // Merge into existing settings.data so other keys are preserved.
-  const current = await getOrgSettings(org.id);
-  const data = { ...current, ...parsed.data };
-  await db
-    .insert(settings)
-    .values({ organizationId: org.id, data })
-    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
-
+  await saveOrgSettings(org.id, parsed.data);
   revalidatePath("/dashboard/configuracion");
   return { ok: true as const };
 }
@@ -100,13 +102,7 @@ export async function updateReminderSettings(input: ReminderSettingsInput) {
   if (!org || !role || !WRITE_ROLES.includes(role)) {
     return { ok: false as const, error: "No autorizado" };
   }
-  const current = await getOrgSettings(org.id);
-  const data = { ...current, ...parsed.data };
-  await db
-    .insert(settings)
-    .values({ organizationId: org.id, data })
-    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
-
+  await saveOrgSettings(org.id, parsed.data);
   revalidatePath("/dashboard/configuracion");
   return { ok: true as const };
 }
@@ -120,17 +116,10 @@ export async function updateCostSettings(input: CostSettingsInput) {
   if (!org || !role || !WRITE_ROLES.includes(role)) {
     return { ok: false as const, error: "No autorizado" };
   }
-  const current = await getOrgSettings(org.id);
-  const data = {
-    ...current,
+  await saveOrgSettings(org.id, {
     insumosPct: parsed.data.insumosPct,
     monthlyFixedCents: Math.round(parsed.data.monthlyFixed * 100),
-  };
-  await db
-    .insert(settings)
-    .values({ organizationId: org.id, data })
-    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
-
+  });
   revalidatePath("/dashboard/configuracion");
   revalidatePath("/dashboard/analytics");
   return { ok: true as const };
@@ -145,18 +134,11 @@ export async function updateMarketingSettings(input: MarketingSettingsInput) {
   if (!org || !role || !WRITE_ROLES.includes(role)) {
     return { ok: false as const, error: "No autorizado" };
   }
-  const current = await getOrgSettings(org.id);
-  const data = {
-    ...current,
+  await saveOrgSettings(org.id, {
     ...parsed.data,
     birthdayGreetingText: parsed.data.birthdayGreetingText || "",
     followUpText: parsed.data.followUpText || "",
-  };
-  await db
-    .insert(settings)
-    .values({ organizationId: org.id, data })
-    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
-
+  });
   revalidatePath("/dashboard/configuracion");
   revalidatePath(`/${org.slug}`);
   return { ok: true as const };
@@ -171,20 +153,13 @@ export async function updateIntegrationsSettings(input: IntegrationsSettingsInpu
   if (!org || !role || !WRITE_ROLES.includes(role)) {
     return { ok: false as const, error: "No autorizado" };
   }
-  const current = await getOrgSettings(org.id);
-  const data = {
-    ...current,
+  await saveOrgSettings(org.id, {
     whatsappCountryCode: parsed.data.whatsappCountryCode,
     googleReviewUrl: parsed.data.googleReviewUrl || "",
     googlePlaceUrl: parsed.data.googlePlaceUrl || "",
     googleRating: parsed.data.googleRating,
     googleReviewCount: parsed.data.googleReviewCount,
-  };
-  await db
-    .insert(settings)
-    .values({ organizationId: org.id, data })
-    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
-
+  });
   revalidatePath("/dashboard/configuracion");
   revalidatePath(`/${org.slug}`);
   return { ok: true as const };
@@ -199,18 +174,11 @@ export async function updateLoyaltySettings(input: LoyaltySettingsInput) {
   if (!org || !role || !WRITE_ROLES.includes(role)) {
     return { ok: false as const, error: "No autorizado" };
   }
-  const current = await getOrgSettings(org.id);
-  const data = {
-    ...current,
+  await saveOrgSettings(org.id, {
     loyaltyEnabled: parsed.data.loyaltyEnabled,
     loyaltyEarnPerCents: Math.round(parsed.data.loyaltyEarnPer * 100),
     loyaltyPointValueCents: Math.round(parsed.data.loyaltyPointValue * 100),
-  };
-  await db
-    .insert(settings)
-    .values({ organizationId: org.id, data })
-    .onConflictDoUpdate({ target: settings.organizationId, set: { data } });
-
+  });
   revalidatePath("/dashboard/configuracion");
   return { ok: true as const };
 }
